@@ -1,5 +1,5 @@
 #
-# PIUI
+# PapyrLab
 # Papyrus Intelligent User Interface for Assembling Fragments and Analysis
 #
 # Copyright(C) 2022
@@ -58,14 +58,14 @@ class MainWindow(QMainWindow):
         pass
     def closeEvent(self, event):
 
-        piui = self.centralWidget()
-        if piui.project.filename is not None:
+        papyrlab = self.centralWidget()
+        if papyrlab.project.filename is not None:
             box = QMessageBox()
-            reply = box.question(self, piui.PIUI_VERSION, "Do you want to save changes to " + piui.project.filename,
+            reply = box.question(self, papyrlab.PAPYRLAB_VERSION, "Do you want to save changes to " + papyrlab.project.filename,
                                  QMessageBox.Cancel | QMessageBox.Yes | QMessageBox.No)
 
             if reply == QMessageBox.Yes:
-                piui.saveProject()
+                papyrlab.saveProject()
 
             if reply == QMessageBox.Cancel:
                 event.ignore()
@@ -73,10 +73,10 @@ class MainWindow(QMainWindow):
 
         super(MainWindow, self).closeEvent(event)
 
-class PIUI(QMainWindow):
+class PapyrLab(QMainWindow):
 
     def __init__(self, parent=None):
-        super(PIUI, self).__init__(parent)
+        super(PapyrLab, self).__init__(parent)
 
         ##### CUSTOM STYLE #####
 
@@ -84,15 +84,15 @@ class PIUI(QMainWindow):
 
         ##### DATA INITIALIZATION AND SETUP #####
 
-        self.piui_dir = os.getcwd()
+        self.papyrlab_dir = os.getcwd()
 
-        current_version = "0.1"
-        self.PIUI_VERSION = "PIUI " + current_version
+        current_version = "0.2"
+        self.PAPYRLAB_VERSION = "PapyrLab " + current_version
 
-        print(self.PIUI_VERSION)
+        print(self.PAPYRLAB_VERSION)
 
         # SETTINGS
-        self.settings_widget = QtSettingsWidget(self.piui_dir)
+        self.settings_widget = QtSettingsWidget(self.papyrlab_dir)
 
         self.settings_widget.loadSettings()
         default_width = self.settings_widget.default_wa_width
@@ -179,7 +179,7 @@ class PIUI(QMainWindow):
         # VIEWERPLUS
 
         # main viewer
-        self.viewerplus = QtImageViewerPlus(self.piui_dir)
+        self.viewerplus = QtImageViewerPlus(self.papyrlab_dir)
         self.viewerplus.viewUpdated.connect(self.updateViewInfo)
         self.viewerplus.activated.connect(self.setActiveViewer)
         self.viewerplus.updateInfoPanel[Fragment].connect(self.updatePanelInfo)
@@ -189,7 +189,7 @@ class PIUI(QMainWindow):
         self.viewerplus.updateAllViewers.connect(self.updateAllViewers)
 
         # secondary viewer in SPLIT MODE
-        self.viewerplus2 = QtImageViewerPlus(self.piui_dir)
+        self.viewerplus2 = QtImageViewerPlus(self.papyrlab_dir)
         self.viewerplus2.viewUpdated.connect(self.updateViewInfo)
         self.viewerplus2.activated.connect(self.setActiveViewer)
         self.viewerplus2.updateInfoPanel[Fragment].connect(self.updatePanelInfo)
@@ -400,7 +400,7 @@ class PIUI(QMainWindow):
 
     def setGuiPreferences(self):
 
-        settings = QSettings("VCLAB-AIMH", "PIUI")
+        settings = QSettings("VCLAB-AIMH", "PapyrLab")
         value = settings.value("gui-checkbox-borders", type=bool, defaultValue=True)
         self.checkBoxBorders.setChecked(value)
         value = settings.value("gui-checkbox-ids", type=bool, defaultValue=True)
@@ -411,7 +411,7 @@ class PIUI(QMainWindow):
     @pyqtSlot()
     def saveGuiPreferences(self):
 
-        settings = QSettings("VCLAB-AIMH", "PIUI")
+        settings = QSettings("VCLAB-AIMH", "PapyrLab")
         settings.setValue("gui-checkbox-borders", self.checkBoxBorders.isChecked())
         settings.setValue("gui-checkbox-ids", self.checkBoxIds.isChecked())
         settings.setValue("gui-checkbox-grid", self.checkBoxGrid.isChecked())
@@ -515,7 +515,7 @@ class PIUI(QMainWindow):
 
     def setProjectTitle(self, project_name):
 
-        title = self.PIUI_VERSION + " [Project: " + project_name + "]"
+        title = self.PAPYRLAB_VERSION + " [Project: " + project_name + "]"
         if self.parent() is not None:
             self.parent().setWindowTitle(title)
         else:
@@ -523,7 +523,7 @@ class PIUI(QMainWindow):
 
         if project_name != "NONE":
 
-            settings = QSettings('VCLAB-AIMH', 'PIUI')
+            settings = QSettings('VCLAB-AIMH', 'PapyrLab')
             files = settings.value('recentFileList')
 
             if files:
@@ -609,7 +609,7 @@ class PIUI(QMainWindow):
         helpAct.setStatusTip("Help")
         helpAct.triggered.connect(self.help)
 
-        aboutAct = QAction("About PIUI", self)
+        aboutAct = QAction("About PapyrLab", self)
         aboutAct.triggered.connect(self.about)
 
         menubar = QMenuBar(self)
@@ -713,7 +713,7 @@ class PIUI(QMainWindow):
 
         if self.activeviewer.image.grid is not None:
 
-            reply = QMessageBox.question(self, self.PIUI_VERSION,
+            reply = QMessageBox.question(self, self.PAPYRLAB_VERSION,
                                          "Would you like to remove the existing <em>grid</em> and create a new one?",
                                          QMessageBox.Yes | QMessageBox.No)
             if reply == QMessageBox.No:
@@ -752,7 +752,7 @@ class PIUI(QMainWindow):
 
     def updateRecentFileActions(self):
 
-        settings = QSettings('VCLAB-AIMH', 'PIUI')
+        settings = QSettings('VCLAB-AIMH', 'PapyrLab')
         files = settings.value('recentFileList')
 
         if files:
@@ -1313,7 +1313,7 @@ class PIUI(QMainWindow):
     def openProject(self):
 
         filters = "ANNOTATION PROJECT (*.json)"
-        filename, _ = QFileDialog.getOpenFileName(self, "Open a project", self.piui_dir, filters)
+        filename, _ = QFileDialog.getOpenFileName(self, "Open a project", self.papyrlab_dir, filters)
 
         if filename:
             self.load(filename)
@@ -1335,13 +1335,13 @@ class PIUI(QMainWindow):
     @pyqtSlot()
     def saveAsProject(self):
 
-        filters = "PIUI PROJECT (*.json)"
-        filename, _ = QFileDialog.getSaveFileName(self, "Save project", self.piui_dir, filters)
+        filters = "PapyrLab PROJECT (*.json)"
+        filename, _ = QFileDialog.getSaveFileName(self, "Save project", self.papyrlab_dir, filters)
 
         if filename:
             if not filename.endswith('.json'):
                 filename += '.json'
-            dir = QDir(self.piui_dir)
+            dir = QDir(self.papyrlab_dir)
             self.project.filename = dir.relativeFilePath(filename)
             self.setProjectTitle(self.project.filename)
             self.save()
@@ -1351,7 +1351,7 @@ class PIUI(QMainWindow):
     def addImages(self):
 
         filters = "Images (*.png *.jpg *.jpeg)"
-        filenames, _ = QFileDialog.getOpenFileNames(self, "Open one or more images", self.piui_dir, filters)
+        filenames, _ = QFileDialog.getOpenFileNames(self, "Open one or more images", self.papyrlab_dir, filters)
 
         if filenames:
             for filename in filenames:
@@ -1416,8 +1416,8 @@ class PIUI(QMainWindow):
         content = QLabel()
         content.setTextFormat(Qt.RichText)
 
-        txt = "<b>PIUI</b> is an AI-empowered interactive fragments re-assembly tool, " \
-              "specifically targeted to recompose papyrus' fragments.".format(self.PIUI_VERSION)
+        txt = "<b>PapyrLab</b> is an AI-empowered interactive fragments re-assembly tool, " \
+              "specifically targeted to recompose papyrus' fragments.".format(self.PAPYRLAB_VERSION)
 
         content.setWordWrap(True)
         content.setMinimumWidth(500)
@@ -1447,7 +1447,7 @@ class PIUI(QMainWindow):
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            self.project.load(self.piui_dir, filename)
+            self.project.load(self.papyrlab_dir, filename)
         except:
             box = QMessageBox()
             box.setWindowTitle('Failed loading the project')
@@ -1474,7 +1474,7 @@ class PIUI(QMainWindow):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
         try:
-            project_to_append = loadProject(self.piui_dir, filename, self.project.labels)
+            project_to_append = loadProject(self.papyrlab_dir, filename, self.project.labels)
 
         except Exception as e:
             msgBox = QMessageBox()
@@ -1489,7 +1489,7 @@ class PIUI(QMainWindow):
         QApplication.restoreOverrideCursor()
 
         msgBox = QMessageBox()
-        msgBox.setWindowTitle(self.PIUI_VERSION)
+        msgBox.setWindowTitle(self.PAPYRLAB_VERSION)
         msgBox.setText("The fragments of the given project has been successfully added to this one.")
         msgBox.exec()
 
@@ -1502,7 +1502,7 @@ class PIUI(QMainWindow):
         QApplication.restoreOverrideCursor()
 
         msgBox = QMessageBox()
-        msgBox.setWindowTitle(self.PIUI_VERSION)
+        msgBox.setWindowTitle(self.PAPYRLAB_VERSION)
         msgBox.setText("Current project has been successfully saved.")
         msgBox.exec()
 
@@ -1563,11 +1563,11 @@ if __name__ == '__main__':
         app.setFont(font)
 
     # Create the main user interface
-    tool = PIUI()
+    tool = PapyrLab()
 
-    # create the main window - PIUI is the central widget
+    # create the main window - PapyrLab is the central widget
     mw = MainWindow()
-    title = tool.PIUI_VERSION
+    title = tool.PAPYRLAB_VERSION
     mw.setWindowTitle(title)
     mw.setCentralWidget(tool)
     mw.setStyleSheet("background-color: rgb(55,55,55); color: white")
