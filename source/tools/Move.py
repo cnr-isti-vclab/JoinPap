@@ -42,14 +42,18 @@ class Move(Tool):
     def moveFragment(self, dx, dy):
 
         for fragment in self.viewerplus.selected_fragments:
-            if fragment.qpath_item is not None:
-                pt = fragment.qpath_item.pos()
-                fragment.qpath_item.setPos(pt + QPoint(dx,dy))
-
             pt = fragment.qpixmap_item.pos()
             fragment.qpixmap_item.setPos(pt + QPoint(dx,dy))
             pt = fragment.id_item.pos()
             fragment.id_item.setPos(pt + QPoint(dx,dy))
+
+            if fragment.qpixmap_contour_item is not None:
+                pt = fragment.qpixmap_contour_item.pos()
+                fragment.qpixmap_contour_item.setPos(pt + QPoint(dx,dy))
+
+            if fragment.qpixmap_contour_back_item is not None:
+                pt = fragment.qpixmap_contour_back_item.pos()
+                fragment.qpixmap_contour_back_item.setPos(pt + QPoint(dx,dy))
 
     def rotate(self, angle):
 

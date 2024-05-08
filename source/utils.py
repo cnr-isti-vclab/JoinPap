@@ -72,6 +72,20 @@ def maskToQImage(mask):
     return qimg
 
 
+def maskToQImageWTrasparency(mask):
+
+    maskrgb = np.zeros((mask.shape[0], mask.shape[1], 4))
+    maskrgb[:,:,0] = mask
+    maskrgb[:,:,1] = mask
+    maskrgb[:,:,2] = mask
+    maskrgb = maskrgb * 255
+    maskrgb[:,:,3] = 255
+    maskrgb = maskrgb.astype(np.uint8)
+
+    qimg = rgbToQImage(maskrgb)
+    return qimg
+
+
 def floatmapToQImage(floatmap, nodata = float('NaN')):
 
     h = floatmap.shape[0]
