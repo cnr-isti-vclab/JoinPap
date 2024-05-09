@@ -309,9 +309,16 @@ class QtImageViewerPlus(QGraphicsView):
 
         if self.project is not None:
             for fragment in self.project.fragments:
-                pen = self.border_selected_pen if fragment in self.selected_fragments else self.border_pen
-                if fragment.qpath_item is not None:
-                    fragment.qpath_item.setPen(pen)
+                if self.back_vis is True:
+                    if fragment.qpixmap_contour_back is None:
+                        self.fragment.prepareForDrawing()
+                        fragment.qpixmap_contour_back_item = self.scene.addPixmap(fragment.qpixmap_contour)
+                        fragment.qpixmap_contour_back_item.setZValue(self.Z_VALUE_BORDERS)
+                else:
+                    if fragment.qpixmap_contour is None:
+                        self.fragment.prepareForDrawing()
+                        fragment.qpixmap_contour_item = self.scene.addPixmap(fragment.qpixmap_contour)
+                        fragment.qpixmap_contour_item.setZValue(self.Z_VALUE_BORDERS)
 
         self.border_enabled = True
 
@@ -319,8 +326,17 @@ class QtImageViewerPlus(QGraphicsView):
 
         if self.project is not None:
             for fragment in self.project.fragments:
-                if fragment.qpath_item is not None:
-                    fragment.qpath_item.setPen(QPen(Qt.NoPen))
+                if self.back_vis is True:
+                    if fragment.qpixmap_contour_back is not None:
+                        self.scene.removeItem(fragment.qpixmap_contour_back_item)
+                        del fragment.qpixmap_contour_back_item
+                        fragment.qpixmap_contour_back_item = None
+
+                else:
+                    if fragment.qpixmap_contour_item is not None:
+                        self.scene.removeItem(fragment.qpixmap_contour_item)
+                        del fragment.qpixmap_contour_item
+                        fragment.qpixmap_contour_item = None
 
         self.border_enabled = False
 
@@ -396,7 +412,6 @@ class QtImageViewerPlus(QGraphicsView):
 
     def drawFragment(self, fragment):
 
-        pen = self.border_selected_pen if fragment in self.selected_fragments else self.border_pen
         if self.back_vis is True:
             # if it has just been created remove the current graphics item in order to set it again
             if fragment.qpixmap_back_item is not None:
@@ -407,11 +422,10 @@ class QtImageViewerPlus(QGraphicsView):
                 fragment.qpixmap_back_item = None
                 fragment.id_back_item = None
 
-                if fragment.qpath_back_item is not None:
-                    self.scene.removeItem(fragment.qpath_back_item)
-                    del fragment.qpath_back_item
-                    fragment.qpath_back_item = None
-
+                if fragment.qpixmap_contour_back_item is not None:
+                    self.scene.removeItem(fragment.qpixmap_contour_back_item)
+                    del fragment.qpixmap_contour_back_item
+                    fragment.qpixmap_contour_back_item = None
 
             fragment.prepareForDrawing(True)
 
@@ -419,9 +433,10 @@ class QtImageViewerPlus(QGraphicsView):
             fragment.qpixmap_back_item.setZValue(self.Z_VALUE_FRAGMENTS)
             fragment.qpixmap_back_item.setPos(fragment.bbox[1], fragment.bbox[0])
 
-            if fragment.qpath is not None:
-                fragment.qpath_back_item = self.scene.addPath(fragment.qpath, pen)
-                fragment.qpath_back_item.setZValue(self.Z_VALUE_BORDERS)
+            if self.border_enabled:
+                fragment.qpixmap_contour_back_item = self.scene.addPixmap(fragment.qpixmap_contour_back)
+                fragment.qpixmap_contour_back_item.setZValue(self.Z_VALUE_BORDERS)
+                fragment.qpixmap_contour_back_item.setPos(fragment.bbox[1], fragment.bbox[0])
 
             font_size = 12
             fragment.id_back_item = TextItem(str(fragment.id), QFont("Roboto", font_size, QFont.Bold))
@@ -448,10 +463,10 @@ class QtImageViewerPlus(QGraphicsView):
                 fragment.qpixmap_item = None
                 fragment.id_item = None
 
-                if fragment.qpath_item is not None:
-                    self.scene.removeItem(fragment.qpath_item)
-                    del fragment.qpath_item
-                    fragment.qpath_item = None
+                if fragment.qpixmap_contour_item is not None:
+                    self.scene.removeItem(fragment.qpixmap_contour_item)
+                    del fragment.qpixmap_contour_item
+                    fragment.qpixmap_contour_item = None
 
             fragment.prepareForDrawing(False)
 
@@ -459,9 +474,10 @@ class QtImageViewerPlus(QGraphicsView):
             fragment.qpixmap_item.setZValue(self.Z_VALUE_FRAGMENTS)
             fragment.qpixmap_item.setPos(fragment.bbox[1], fragment.bbox[0])
 
-            if fragment.qpath is not None:
-                fragment.qpath_item = self.scene.addPath(fragment.qpath, pen)
-                fragment.qpath_item.setZValue(self.Z_VALUE_BORDERS)
+            if self.border_enabled:
+                fragment.qpixmap_contour_item = self.scene.addPixmap(fragment.qpixmap_contour)
+                fragment.qpixmap_contour_item.setZValue(self.Z_VALUE_BORDERS)
+                fragment.qpixmap_contour_item.setPos(fragment.bbox[1], fragment.bbox[0])
 
             font_size = 12
             fragment.id_item = TextItem(str(fragment.id),  QFont("Roboto", font_size, QFont.Bold))
@@ -485,9 +501,9 @@ class QtImageViewerPlus(QGraphicsView):
             self.scene.removeItem(fragment.qpixmap_back_item)
             fragment.qpixmap_back_item = None
 
-        if fragment.qpath_back_item is not None:
-            self.scene.removeItem(fragment.qpath_back_item)
-            fragment.qpath_back_item = None
+        if fragment.qpixmap_contour_back_item is not None:
+            self.scene.removeItem(fragment.qpixmap_contour_back_item)
+            fragment.qpixmap_contour_back_item = None
 
         if fragment.id_back_item is not None:
             self.scene.removeItem(fragment.id_back_item)
@@ -497,9 +513,9 @@ class QtImageViewerPlus(QGraphicsView):
             self.scene.removeItem(fragment.qpixmap_item)
             fragment.qpixmap_item = None
 
-        if fragment.qpath_item is not None:
-            self.scene.removeItem(fragment.qpath_item)
-            fragment.qpath_item = None
+        if fragment.qpixmap_contour_item is not None:
+            self.scene.removeItem(fragment.qpixmap_contour_item)
+            fragment.qpixmap_contour_item = None
 
         if fragment.id_item is not None:
             self.scene.removeItem(fragment.id_item)
@@ -758,11 +774,6 @@ class QtImageViewerPlus(QGraphicsView):
             b = int(color_components[2])
             self.border_pen.setColor(QColor(r, g, b))
 
-            if self.project is not None:
-                for fragment in self.project.fragments:
-                    if fragment.qpath_item is not None:
-                        fragment.qpath_item.setPen(self.border_pen)
-
     @pyqtSlot(str, int)
     def setSelectionPen(self, color, thickness):
 
@@ -774,11 +785,6 @@ class QtImageViewerPlus(QGraphicsView):
             g = int(color_components[1])
             b = int(color_components[2])
             self.border_selected_pen.setColor(QColor(r, g, b))
-
-            if self.project is not None:
-                for fragment in self.selected_fragments:
-                    if fragment.qpath_item is not None:
-                        fragment.qpath_item.setPen(self.border_selected_pen)
 
     @pyqtSlot(str)
     def setWorkingAreaBackgroundColor(self, color):
@@ -821,12 +827,13 @@ class QtImageViewerPlus(QGraphicsView):
         else:
             self.selected_fragments.append(fragment)
 
-        if fragment.qpixmap_item is not None:
-            if fragment.qpath_item is not None:
-                fragment.qpath_item.setPen(self.border_selected_pen)
-                fragment.qpath_item.setZValue(self.Z_VALUE_BORDERS)
-            fragment.id_item.setZValue(self.Z_VALUE_IDS)
-            fragment.id_item.setOpacity(1.0)
+        if fragment.qpixmap_contour is None:
+            fragment.prepareForDrawing()
+
+        fragment.qpixmap_contour_item = self.scene.addPixmap(fragment.qpixmap_contour)
+
+        fragment.id_item.setZValue(self.Z_VALUE_IDS)
+        fragment.id_item.setOpacity(1.0)
 
         self.scene.invalidate()
         self.selectionChanged.emit()
@@ -836,15 +843,13 @@ class QtImageViewerPlus(QGraphicsView):
             # safer if iterating over selected_fragments and calling this function.
             self.selected_fragments = [x for x in self.selected_fragments if not x == fragment]
 
-            if fragment.qpath_item is not None:
-                if self.border_enabled is True:
-                    fragment.qpath_item.setPen(self.border_pen)
-                else:
-                    fragment.qpath_item.setPen(QPen(Qt.NoPen))
+            if fragment.qpixmap_contour_item is not None:
+                self.scene.removeItem(fragment.qpixmap_contour_item)
+                del fragment.qpixmap_contour_item
+                fragment.qpixmap_contour_item = None
 
-                fragment.qpath_item.setZValue(self.Z_VALUE_BORDERS)
-                fragment.id_item.setZValue(self.Z_VALUE_IDS)
-                fragment.id_item.setOpacity(0.7)
+            fragment.id_item.setZValue(self.Z_VALUE_IDS)
+            fragment.id_item.setOpacity(0.7)
 
             self.scene.invalidate()
 
@@ -869,14 +874,10 @@ class QtImageViewerPlus(QGraphicsView):
 
     def resetSelection(self):
         for fragment in self.selected_fragments:
-            if fragment.qpixmap_item is not None:
-                if fragment.qpath_item is not None:
-                    if self.border_enabled is True:
-                        fragment.qpath_item.setPen(self.border_pen)
-                    else:
-                        fragment.qpath_item.setPen(QPen(Qt.NoPen))
-
-                    fragment.qpath_item.setZValue(self.Z_VALUE_BORDERS)
+            if fragment.qpixmap_contour_item is not None:
+                self.scene.removeItem(fragment.qpixmap_contour_item)
+                del fragment.qpixmap_contour_item
+                fragment.qpixmap_contour_item = None
 
                 fragment.id_item.setZValue(self.Z_VALUE_IDS)
                 fragment.id_item.setOpacity(0.7)
@@ -896,9 +897,6 @@ class QtImageViewerPlus(QGraphicsView):
 
         if selected:
             self.addToSelectedList(fragment)
-
-        if self.border_enabled is False and fragment.qpath_item is not None:
-            fragment.qpath_item.setPen(QPen(Qt.NoPen))
 
     def removeFragment(self, fragment):
 

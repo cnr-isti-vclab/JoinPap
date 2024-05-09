@@ -18,12 +18,12 @@
 # for more details.
 
 import numpy as np
+import skimage.morphology
 
 from skimage import measure
-from PyQt5.QtGui import QImage, QPixmap, QPainterPath, QPolygonF
-from PyQt5.QtCore import QPointF
+from PyQt5.QtGui import QImage, QPixmap
 
-from source.utils import qimageToNumpyArray
+from source.utils import qimageToNumpyArray, maskToQImage, maskToQImageWTrasparency
 
 """
 compute the bounding box of a set of points in format [[x0, y0], [x1, y1]... ]
@@ -65,11 +65,12 @@ class Fragment(object):
         self.qimage_back = None
         self.qpixmap = None
         self.qpixmap_back = None
+        self.qpixmap_contour = None
+        self.qpixmap_contour_back = None
         self.qpixmap_item = None
         self.qpixmap_back_item = None
-        self.qpath = None
-        self.qpath_item = None
-        self.qpath_back_item = None
+        self.qpixmap_contour_item = None
+        self.qpixmap_contour_back_item = None
         self.id_item = None
         self.id_back_item = None
 
@@ -77,9 +78,11 @@ class Fragment(object):
         if filename != "":
 
             self.qimage = QImage(filename)
+            self.qimage = self.qimage.convertToFormat(QImage.Format_ARGB32)
 
             filename_back = filename[:-4] + "_back" + filename[-4:]
             self.qimage_back = QImage(filename_back)
+            self.qimage_back = self.qimage_back.convertToFormat(QImage.Format_ARGB32)
 
             # BBOX FORMAT: top, left, width, height
             self.bbox = [offset_y, offset_x, self.qimage.width(), self.qimage.height()]
@@ -95,97 +98,13 @@ class Fragment(object):
 
     def createMask(self, qimage):
 
-        mask = np.zeros((self.bbox[3], self.bbox[2]), dtype=np.uint8)
+        mask = np.zeros((qimage.height(), qimage.width()), dtype=np.uint8)
         img = qimageToNumpyArray(qimage)
 
         # turn on opaque pixels
-        mask[img[:, :, 3] > 0] = 255
+        mask[img[:, :, 3] < 150] = 1
 
         return mask
-
-    def createContourFromMask(self, mask):
-        """
-        It creates the contour (and the corrisponding polygon) from the blob mask.
-        """
-
-        if self.inner_contours is not None: 
-            self.inner_contours.clear()
-        if self.contour is not None:
-            self.contour.clear()
-        return 
-
-        # we need to pad the mask to avoid to break the contour that touches the borders
-        PADDED_SIZE = 4
-
-        img_padded = np.pad(mask, (PADDED_SIZE, PADDED_SIZE), mode="constant", constant_values=(0, 0))
-
-        contours = measure.find_contours(img_padded, 0.6)
-        inner_contours = measure.find_contours(img_padded, 0.4)
-        number_of_contours = len(contours)
-
-        threshold = 20  # min number of points in a small hole
-
-        if number_of_contours > 1:
-
-            # search the contour with the largest bounding box (area)
-            max_area = 0
-            longest = 0
-            for i, contour in enumerate(contours):
-                cbox = pointsBox(contour, 0)
-                area = cbox[2] * cbox[3]
-                if area > max_area:
-                    max_area = area
-                    longest = i
-
-            max_area = 0
-            inner_longest = 0
-            for i, contour in enumerate(inner_contours):
-                cbox = pointsBox(contour, 0)
-                area = cbox[2] * cbox[3]
-                if area > max_area:
-                    max_area = area
-                    inner_longest = i
-
-            # divide the contours in OUTER contour and INNER contours
-            for i, contour in enumerate(contours):
-                if i == longest:
-                    self.contour = np.array(contour)
-
-            for i, contour in enumerate(inner_contours):
-                if i != inner_longest:
-                    if contour.shape[0] > threshold:
-                        coordinates = np.array(contour)
-                        self.inner_contours.append(coordinates)
-
-            # adjust the coordinates of the outer contour
-            # (NOTE THAT THE COORDINATES OF THE BBOX ARE IN THE GLOBAL MAP COORDINATES SYSTEM)
-            for i in range(self.contour.shape[0]):
-                ycoor = self.contour[i, 0]
-                xcoor = self.contour[i, 1]
-                self.contour[i, 0] = xcoor - PADDED_SIZE + self.bbox[1]
-                self.contour[i, 1] = ycoor - PADDED_SIZE + self.bbox[0]
-
-            # adjust coordinates of the INNER contours
-            for j, contour in enumerate(self.inner_contours):
-                for i in range(contour.shape[0]):
-                    ycoor = contour[i, 0]
-                    xcoor = contour[i, 1]
-                    self.inner_contours[j][i, 0] = xcoor - PADDED_SIZE + self.bbox[1]
-                    self.inner_contours[j][i, 1] = ycoor - PADDED_SIZE + self.bbox[0]
-        elif number_of_contours == 1:
-
-            coords = measure.approximate_polygon(contours[0], tolerance=0.2)
-            self.contour = np.array(coords)
-
-            # adjust the coordinates of the outer contour
-            # (NOTE THAT THE COORDINATES OF THE BBOX ARE IN THE GLOBAL MAP COORDINATES SYSTEM)
-            for i in range(self.contour.shape[0]):
-                ycoor = self.contour[i, 0]
-                xcoor = self.contour[i, 1]
-                self.contour[i, 0] = xcoor - PADDED_SIZE + self.bbox[1]
-                self.contour[i, 1] = ycoor - PADDED_SIZE + self.bbox[0]
-        else:
-            raise Exception("Empty contour")
 
     def getImage(self):
 
@@ -211,14 +130,6 @@ class Fragment(object):
         self.bbox[0] += dy
         self.bbox[1] += dx
 
-        if self.contour is not None:
-            self.contour[:, 0] += dx
-            self.contour[:, 1] += dy
-
-        for inner_contour in self.inner_contours:
-            inner_contour[:, 0] += dx
-            inner_contour[:, 1] += dy
-    
     def setPosition(self, newX, newY):
 
         self.center[0] = newX
@@ -227,49 +138,40 @@ class Fragment(object):
         self.bbox[0] = newY
         self.bbox[1] = newX
 
-        if self.contour is not None:
-            self.contour[:, 0] = newX
-            self.contour[:, 1] = newY
-
-        for inner_contour in self.inner_contours:
-            inner_contour[:, 0] = newX
-            inner_contour[:, 1] = newY
-
     def prepareForDrawing(self, back=False):
         """
-        Create the QPixmap and the QPainterPath to highlight the contour of the selected fragments.
+        Create the QPixmap and the mask to hhighlight the contour of the selected fragments.
         """
 
-        if back is True:
-            self.qpixmap_back = QPixmap.fromImage(self.qimage_back)
-        else:
+        if self.qimage is not None and self.qpixmap is None:
             self.qpixmap = QPixmap.fromImage(self.qimage)
 
-        mask = self.createMask(self.qimage)
-        m = measure.moments(mask)
-        c = np.array((m[0, 1] / m[0, 0], m[1, 0] / m[0, 0]))
-        self.center = np.array((c[0] + self.bbox[1], c[1] + self.bbox[0]))
+        if self.qimage_back is not None and self.qpixmap_back is None:
+            self.qpixmap_back = QPixmap.fromImage(self.qimage_back)
 
-        self.createContourFromMask(mask)
+        if self.qimage is not None and self.qpixmap_contour is None:
+            mask = self.createMask(self.qimage)
+            m = measure.moments(mask)
+            c = np.array((m[0, 1] / m[0, 0], m[1, 0] / m[0, 0]))
+            self.center = np.array((c[0] + self.bbox[1], c[1] + self.bbox[0]))
+            self.qpixmap_contour = self.createContourFromMask(mask)
 
-        return 
+        if self.qimage_back is not None and self.qpixmap_contour_back is None:
+            mask = self.createMask(self.qimage_back)
+            self.qpixmap_contour_back = self.createContourFromMask(mask)
 
-        # QPolygon to draw the blob
-        qpolygon = QPolygonF()
-        for i in range(self.contour.shape[0]):
-            qpolygon << QPointF(self.contour[i, 0] + 0.5, self.contour[i, 1] + 0.5)
+    def createContourFromMask(self, mask):
 
-        self.qpath = QPainterPath()
-        self.qpath.addPolygon(qpolygon)
+        mask_eroded = skimage.morphology.binary_dilation(mask)
+        mask_eroded2 = skimage.morphology.binary_dilation(mask_eroded)
+        mask_dilated = skimage.morphology.binary_erosion(mask)
+        mask_dilated2 = skimage.morphology.binary_erosion(mask_dilated)
 
-        for inner_contour in self.inner_contours:
-            qpoly_inner = QPolygonF()
-            for i in range(inner_contour.shape[0]):
-                qpoly_inner << QPointF(inner_contour[i, 0] + 0.5, inner_contour[i, 1] + 0.5)
+        contour = (~mask & mask_eroded) | (~mask & mask_dilated)
+        qimg = maskToQImageWTrasparency(contour)
+        pxmap = QPixmap.fromImage(qimg)
 
-            path_inner = QPainterPath()
-            path_inner.addPolygon(qpoly_inner)
-            self.qpath = self.qpath.subtracted(path_inner)
+        return pxmap
 
     def fromDict(self, dict):
         """
@@ -283,10 +185,6 @@ class Fragment(object):
         self.bbox = dict["bbox"]
         self.center = np.asarray(dict["center"])
         self.filename = dict["filename"]
-        self.contour = np.asarray(dict["contour"])
-        self.inner_contours = []
-        for c in dict["inner contours"]:
-            self.inner_contours.append(np.asarray(c))
 
         if self.filename != "":
             self.qimage = QImage(self.filename)
@@ -294,10 +192,6 @@ class Fragment(object):
             self.qimage_back = QImage(filename_back)
 
             self.prepareForDrawing()
-
-
-    def createContour(self):
-        pass
 
     def save(self):
         return self.toDict()
@@ -315,10 +209,6 @@ class Fragment(object):
         dict["note"] = self.note
         dict["bbox"] = self.bbox
         dict["center"] = self.center.tolist()
-        dict["contour"] = self.contour.tolist()
-        dict["inner contours"] = []
-        for c in self.inner_contours:
-            dict["inner contours"].append(c.tolist())
 
         return dict
 
