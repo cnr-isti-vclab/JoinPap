@@ -1132,8 +1132,8 @@ class PapyrLab(QMainWindow):
             fragL, fragR = fragR, fragL
 
         # WARNING: left and right are swapped when working in the back
-        backR = fragL.getImageBack()[:, ::-1, :].copy()
-        backL = fragR.getImageBack()[:, ::-1, :].copy()
+        backR = fragL.getImageBack().copy()
+        backL = fragR.getImageBack().copy()
 
         # posL and posR are array of (y,x) coordinates of top-left points of the analyzed patches
         posL, posR, scored_displacements, scoresLR = matcher.match(backL, backR)
