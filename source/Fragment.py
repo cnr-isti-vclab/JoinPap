@@ -138,7 +138,7 @@ class Fragment(object):
         self.bbox[0] = newY
         self.bbox[1] = newX
 
-    def prepareForDrawing(self, back=False):
+    def prepareForDrawing(self):
         """
         Create the QPixmap and the mask to hhighlight the contour of the selected fragments.
         """
@@ -162,10 +162,8 @@ class Fragment(object):
 
     def createContourFromMask(self, mask):
 
-        mask_eroded = skimage.morphology.binary_dilation(mask)
-        mask_eroded2 = skimage.morphology.binary_dilation(mask_eroded)
-        mask_dilated = skimage.morphology.binary_erosion(mask)
-        mask_dilated2 = skimage.morphology.binary_erosion(mask_dilated)
+        mask_eroded = skimage.morphology.binary_dilation(mask, skimage.morphology.disk(5))
+        mask_dilated = skimage.morphology.binary_erosion(mask, skimage.morphology.disk(5))
 
         contour = (~mask & mask_eroded) | (~mask & mask_dilated)
         qimg = maskToQImageWTrasparency(contour)

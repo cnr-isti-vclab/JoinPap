@@ -137,16 +137,22 @@ class Project(object):
         for fragment in self.fragments:
             if x >= fragment.bbox[1] and x <= fragment.bbox[1] + fragment.bbox[2] and y >= fragment.bbox[0] and y <= fragment.bbox[0] + fragment.bbox[3]:
                 fragments_clicked.append(fragment)
-        
-        # for fragment in self.fragments:
-        #     out = measure.points_in_poly(point, fragment.contour)
-        #     if out[0] == True:
-        #         fragments_clicked.append(fragment)
 
         if len(fragments_clicked) == 0:
             return None
         else:
-            return fragments_clicked[0]
+
+            dist_min = 100000000.0
+            fragment_smallest = fragments_clicked[0]
+            for fragment in fragments_clicked:
+                dx = (fragment.center[0] - x)
+                dy = (fragment.center[1] - y)
+                dist = dx*dx + dy*dy
+                if dist < dist_min:
+                    dist_min = dist
+                    fragment_smallest = fragment
+
+            return fragment_smallest
 
     def getFragmentsOfAGroup(self, fragment):
         """
