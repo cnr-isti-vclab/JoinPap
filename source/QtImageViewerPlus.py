@@ -634,6 +634,7 @@ class QtImageViewerPlus(QGraphicsView):
                     self.setDragMode(QGraphicsView.ScrollHandDrag)
                 else:
                     self.dragSelectionStart = [x, y]
+
                     if mods & Qt.ShiftModifier:
                         self.selectOp(x, y)
                     else:

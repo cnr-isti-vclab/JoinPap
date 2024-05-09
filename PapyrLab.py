@@ -358,8 +358,9 @@ class PapyrLab(QMainWindow):
             self.viewerplus2.setWorkingAreaBackgroundColor)
         self.settings_widget.working_area_settings.workingAreaPenChanged[str, int].connect(self.viewerplus2.setWorkingAreaPen)
 
-        self.viewerplus.viewHasChanged[float, float, float].connect(self.viewerplus2.setViewParameters)
-        self.viewerplus2.viewHasChanged[float, float, float].connect(self.viewerplus.setViewParameters)
+        # views synchronization
+        #self.viewerplus.viewHasChanged[float, float, float].connect(self.viewerplus2.setViewParameters)
+        #self.viewerplus2.viewHasChanged[float, float, float].connect(self.viewerplus.setViewParameters)
 
         self.viewerplus.customContextMenuRequested.connect(self.openContextMenu)
         self.viewerplus2.customContextMenuRequested.connect(self.openContextMenu)
