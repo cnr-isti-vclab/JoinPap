@@ -100,7 +100,7 @@ class QtImageViewerPlus(QGraphicsView):
 
     updateAllViewers = pyqtSignal()
 
-    def __init__(self, piui_dir):
+    def __init__(self, piui_dir, parent=None):
         QGraphicsView.__init__(self)
 
         self.project = None
@@ -190,6 +190,7 @@ class QtImageViewerPlus(QGraphicsView):
         self.tools = Tools(self)
         self.tools.createTools()
 
+        self.parent = parent
 
     def setProject(self, project):
 
@@ -572,6 +573,7 @@ class QtImageViewerPlus(QGraphicsView):
         selected_fragment = self.project.fragmentClicked(x, y)
 
         if selected_fragment is not None:
+            self.parent.image_set_widget.scrollToFragment(selected_fragment)
 
             if selected_fragment.group_id >= 0:
                 fragments = self.project.getFragmentsOfAGroup(selected_fragment)

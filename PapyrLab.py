@@ -179,7 +179,7 @@ class PapyrLab(QMainWindow):
         # VIEWERPLUS
 
         # main viewer
-        self.viewerplus = QtImageViewerPlus(self.papyrlab_dir)
+        self.viewerplus = QtImageViewerPlus(self.papyrlab_dir, self)
         self.viewerplus.viewUpdated.connect(self.updateViewInfo)
         self.viewerplus.activated.connect(self.setActiveViewer)
         self.viewerplus.updateInfoPanel[Fragment].connect(self.updatePanelInfo)
@@ -189,7 +189,7 @@ class PapyrLab(QMainWindow):
         self.viewerplus.updateAllViewers.connect(self.updateAllViewers)
 
         # secondary viewer in SPLIT MODE
-        self.viewerplus2 = QtImageViewerPlus(self.papyrlab_dir)
+        self.viewerplus2 = QtImageViewerPlus(self.papyrlab_dir, self)
         self.viewerplus2.viewUpdated.connect(self.updateViewInfo)
         self.viewerplus2.activated.connect(self.setActiveViewer)
         self.viewerplus2.updateInfoPanel[Fragment].connect(self.updatePanelInfo)
@@ -297,7 +297,7 @@ class PapyrLab(QMainWindow):
 
 
         # IMAGE SET WIDGET
-        self.image_set_widget = QtImageSetWidget(self.project)
+        self.image_set_widget = QtImageSetWidget(self.project, self)
 
         # BLOB INFO
         self.groupbox_panelinfo = QtPanelInfo()

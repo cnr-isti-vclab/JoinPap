@@ -35,9 +35,9 @@ class QMiniImage(QWidget):
         layout_V = QVBoxLayout()
         pxmap = fragment.qpixmap.copy()
         pxmap = pxmap.scaled(self.THUMB_SIZE, self.THUMB_SIZE, Qt.KeepAspectRatio)
-        lbl = QLabel()
-        lbl.setPixmap(pxmap)
-        layout_V.addWidget(lbl)
+        self.lbl = QLabel()
+        self.lbl.setPixmap(pxmap)
+        layout_V.addWidget(self.lbl)
         label = os.path.basename(fragment.filename)
         layout_V.addWidget(QLabel(label))
 
@@ -84,6 +84,8 @@ class QtImageSetWidget(QWidget):
         main_layout.addLayout(hlayout)
         main_layout.addWidget(self.scroll_area)
         self.setLayout(main_layout)
+
+        self.parent = parent
 
     pyqtSlot(int)
     def groupChanged(self, index):
@@ -145,6 +147,21 @@ class QtImageSetWidget(QWidget):
             col = n % self.NCOLS
             self.grid_layout.addWidget(mini_image, row, col)
 
+            # Connect the click event to highlight the selected item
+            mini_image.mousePressEvent = lambda event, img=mini_image: self.highlightItem(img)
+
+    def clearHighlights(self):
+        for mini_image in self.mini_images:
+            mini_image.lbl.setStyleSheet("")
+
+    def highlightItem(self, item, center=True):
+        self.clearHighlights()
+        item.lbl.setStyleSheet("background-color: lightgray;")
+        self.parent.viewerplus.resetSelection()
+        self.parent.viewerplus.addToSelectedList(item.ref)
+        if center:
+            self.parent.viewerplus.centerOn(item.ref.center[0], item.ref.center[1])
+
     def updateComboGroups(self):
 
         self.combo_group.clear()
@@ -160,6 +177,12 @@ class QtImageSetWidget(QWidget):
         group_ids.sort()
         for group_id in group_ids:
             self.combo_group.addItem(str(group_id))
+
+    def scrollToFragment(self, fragment):
+        for mini_image in self.mini_images:
+            if mini_image.ref == fragment:
+                self.scroll_area.ensureWidgetVisible(mini_image)
+                self.highlightItem(mini_image, center=False)
 
     def removeImages(self, fragments):
 
