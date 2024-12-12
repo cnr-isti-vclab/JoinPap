@@ -1298,14 +1298,17 @@ class PapyrLab(QMainWindow):
         else:
             self.working_area_widget.show()
 
-    @pyqtSlot()
-    def setWorkingArea(self):
-
-        self.project.setWorkingArea(self.working_area_widget.workingArea())
+    def _setWorkingArea(self):
         self.viewerplus.drawWorkingArea()
 
         if self.viewerplus2.isVisible():
             self.viewerplus2.drawWorkingArea()
+
+    @pyqtSlot()
+    def setWorkingArea(self):
+
+        self.project.setWorkingArea(self.working_area_widget.workingArea())
+        self._setWorkingArea()
 
         self.working_area_widget.close()
         self.working_area_widget = None
@@ -1374,17 +1377,32 @@ class PapyrLab(QMainWindow):
         if folder_name:
             images_names = [x for x in glob.glob(os.path.join(folder_name, '*.png'))]
 
+            fragment_sizes = []
+            valid_filenames = []
             for filename in images_names:
-                if filename.find("back") < 0:
-                    id = self.project.getFreeFragmentId()
-                    posx, posy = self.project.getFreePosition(filename)
-                    fragment = Fragment(filename, posx, posy, id)
-                    self.project.addFragment(fragment)
-                    self.image_set_widget.addImage(fragment)
+                if filename.find("back") < 0 and filename not in [fragment.filename for fragment in self.project.fragments]:
+                    valid_filenames.append(filename)
+                    reader = QImageReader(filename)
+                    width = reader.size().width()
+                    height = reader.size().height()
+                    fragment_sizes.append((width, height))
+
+            positions = self.project.fragmentPacking(fragment_sizes)
+            assert len(positions) == len(valid_filenames)
+
+            y_offset = max([f.bbox[0] + f.bbox[3] for f in self.project.fragments]) if len(self.project.fragments) > 0 else 0
+
+            for filename, (posx, posy) in zip(valid_filenames, positions):
+                id = self.project.getFreeFragmentId()
+                # posx, posy = self.project.getFreePosition(filename)
+                fragment = Fragment(filename, posx, posy + y_offset, id)
+                self.project.addFragment(fragment)
+                self.image_set_widget.addImage(fragment)
 
             self.image_set_widget.updateScrollArea()
             self.image_set_widget.updateComboGroups()
             self.viewerplus.drawAllFragments()
+            self._setWorkingArea()
             self.updateToolStatus()
 
     @pyqtSlot()

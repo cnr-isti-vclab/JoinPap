@@ -12,6 +12,7 @@ from source.Grid import Grid
 import source.utils as utils
 
 from skimage import measure
+import rpack
 
 import random
 
@@ -213,6 +214,26 @@ class Project(object):
                 return id
 
         return len(used)
+    
+    def fragmentPacking(self, sizes):
+        try:
+            positions = rpack.pack(sizes, max_width=self.working_area[0], max_height=self.working_area[1])
+        except rpack.PackingImpossibleError:
+            print("Packing impossible in the provided working area. Trying to pack in a bigger area.")
+            max_sizes = np.max(np.array(sizes, dtype=int), axis=0)
+            max_width, max_height = int(max_sizes[0]), int(max_sizes[1])
+            if max_width > self.working_area[0]:
+                self.working_area[0] = sum([size[0] for size in sizes]) + 100
+                self.working_area[1] = max_height
+            if max_height > self.working_area[1]:
+                self.working_area[1] = max_height + 100
+                self.working_area[0] = sum([size[0] for size in sizes]) + 100
+
+            positions = rpack.pack(sizes, max_width=self.working_area[0], max_height=self.working_area[1])
+
+        # subtract the height of the fragment to the y position, as we have to return the upper left coordinate, while positions return the lower left
+        # positions = [(x, y - h) for (x, y), (w, h) in zip(positions, sizes)]   # TODO: check here!
+        return positions
 
     def getFreePosition(self, filename):
         """
