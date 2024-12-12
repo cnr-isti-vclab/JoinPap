@@ -15,6 +15,8 @@ class Move(Tool):
         selected_fragment = self.viewerplus.project.fragmentClicked(x, y)
         if selected_fragment is None:
             return
+        
+        self.viewerplus.parent.image_set_widget.scrollToFragment(selected_fragment)
 
         self.viewerplus.resetSelection()
         if selected_fragment.group_id == -1:
