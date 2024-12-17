@@ -223,13 +223,13 @@ class Project(object):
             max_sizes = np.max(np.array(sizes, dtype=int), axis=0)
             max_width, max_height = int(max_sizes[0]), int(max_sizes[1])
             if max_width > self.working_area[0]:
-                self.working_area[0] = sum([size[0] for size in sizes]) + 100
-                self.working_area[1] = max_height
+                new_width = sum([size[0] for size in sizes]) + 100
+                new_height = max_height
             if max_height > self.working_area[1]:
-                self.working_area[1] = max_height + 100
-                self.working_area[0] = sum([size[0] for size in sizes]) + 100
+                new_height = max_height + 100
+                new_width = sum([size[0] for size in sizes]) + 100
 
-            positions = rpack.pack(sizes, max_width=self.working_area[0], max_height=self.working_area[1])
+            positions = rpack.pack(sizes, max_width=new_width, max_height=new_height)
 
         # subtract the height of the fragment to the y position, as we have to return the upper left coordinate, while positions return the lower left
         # positions = [(x, y - h) for (x, y), (w, h) in zip(positions, sizes)]   # TODO: check here!

@@ -1355,6 +1355,34 @@ class PapyrLab(QMainWindow):
             self.save()
 
 
+    def _addToWorkspace(self, images_names):
+        fragment_sizes = []
+        valid_filenames = []
+        for filename in images_names:
+            if filename.find("back") < 0 and filename not in [fragment.filename for fragment in self.project.fragments]:
+                valid_filenames.append(filename)
+                reader = QImageReader(filename)
+                width = reader.size().width()
+                height = reader.size().height()
+                fragment_sizes.append((width, height))
+
+        positions = self.project.fragmentPacking(fragment_sizes)
+        assert len(positions) == len(valid_filenames)
+
+        y_offset = max([f.bbox[0] + f.bbox[3] for f in self.project.fragments]) if len(self.project.fragments) > 0 else 0
+
+        for filename, (posx, posy) in zip(valid_filenames, positions):
+            id = self.project.getFreeFragmentId()
+            # posx, posy = self.project.getFreePosition(filename)
+            fragment = Fragment(filename, posx, posy + y_offset, id)
+            self.project.addFragment(fragment)
+            self.image_set_widget.addImage(fragment)
+
+        self.image_set_widget.updateScrollArea()
+        self.image_set_widget.updateComboGroups()
+        self.viewerplus.drawAllFragments()
+        self.updateToolStatus()
+
     @pyqtSlot()
     def addImages(self):
 
@@ -1362,17 +1390,7 @@ class PapyrLab(QMainWindow):
         filenames, _ = QFileDialog.getOpenFileNames(self, "Open one or more images", self.papyrlab_dir, filters)
 
         if filenames:
-            for filename in filenames:
-                id = self.project.getFreeFragmentId()
-                posx, posy = self.project.getFreePosition(filename)
-                fragment = Fragment(filename, posx, posy, id)
-                self.project.addFragment(fragment)
-                self.image_set_widget.addImage(fragment)
-
-            self.image_set_widget.updateScrollArea()
-            self.image_set_widget.updateComboGroups()
-            self.viewerplus.drawAllFragments()
-            self.updateToolStatus()
+            self._addToWorkspace(filenames)
 
     @pyqtSlot()
     def addFolder(self):
@@ -1380,34 +1398,7 @@ class PapyrLab(QMainWindow):
         folder_name = QFileDialog.getExistingDirectory(self, "Select a Folder", "")
         if folder_name:
             images_names = [x for x in glob.glob(os.path.join(folder_name, '*.png'))]
-
-            fragment_sizes = []
-            valid_filenames = []
-            for filename in images_names:
-                if filename.find("back") < 0 and filename not in [fragment.filename for fragment in self.project.fragments]:
-                    valid_filenames.append(filename)
-                    reader = QImageReader(filename)
-                    width = reader.size().width()
-                    height = reader.size().height()
-                    fragment_sizes.append((width, height))
-
-            positions = self.project.fragmentPacking(fragment_sizes)
-            assert len(positions) == len(valid_filenames)
-
-            y_offset = max([f.bbox[0] + f.bbox[3] for f in self.project.fragments]) if len(self.project.fragments) > 0 else 0
-
-            for filename, (posx, posy) in zip(valid_filenames, positions):
-                id = self.project.getFreeFragmentId()
-                # posx, posy = self.project.getFreePosition(filename)
-                fragment = Fragment(filename, posx, posy + y_offset, id)
-                self.project.addFragment(fragment)
-                self.image_set_widget.addImage(fragment)
-
-            self.image_set_widget.updateScrollArea()
-            self.image_set_widget.updateComboGroups()
-            self.viewerplus.drawAllFragments()
-            self._setWorkingArea()
-            self.updateToolStatus()
+            self._addToWorkspace(images_names)
 
     @pyqtSlot()
     def importFragments(self):
