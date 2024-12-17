@@ -20,15 +20,17 @@ class MyGText(QGraphicsTextItem):
 
 class Grid(QObject):
 
-    def __init__(self, parent=None):
+    def __init__(self, width, height, parent=None):
         super(QObject, self).__init__(parent)
 
-        self.width = 0
-        self.height = 0
+        self.width = width
+        self.height = height
         self.nrow = 0
         self.ncol = 0
         self.offx = 0
         self.offy = 0
+        self.intercolumn_space = 0
+        self.column_width = 0
 
         self.scene = None
         self.cell_values = None
@@ -47,6 +49,8 @@ class Grid(QObject):
         dict_to_save["ncol"] = self.ncol
         dict_to_save["offx"] = self.offx
         dict_to_save["offy"] = self.offy
+        dict_to_save["column_width"] = self.column_width
+        dict_to_save["intercolumn_space"] = self.intercolumn_space
         dict_to_save["cell_values"] = self.cell_values.tolist()
         dict_to_save["notes"] = self.notes
 
@@ -56,10 +60,12 @@ class Grid(QObject):
 
         self.width = dict["width"]
         self.height = dict["height"]
+        self.column_width = dict["column_width"]
         self.nrow = dict["nrow"]
         self.ncol = dict["ncol"]
         self.offx = dict["offx"]
         self.offy = dict["offy"]
+        self.intercolumn_space = dict["intercolumn_space"]
         self.cell_values = np.asarray(dict["cell_values"])
         self.notes = dict["notes"]
 
@@ -67,17 +73,20 @@ class Grid(QObject):
 
         self.scene = scene
 
-    def setGrid(self, width, height, nrow, ncol):
+    def setGrid(self, column_width, ncol, margin_x, margin_y, intercolumn_space):
 
-        self.width = width
-        self.height = height
-        self.nrow = nrow
+        self.column_width = column_width
+        self.nrow = 1
         self.ncol = ncol
+        self.offx = margin_x
+        self.offy = margin_y
+        self.intercolumn_space = intercolumn_space
 
         # cells values
         self.cell_values = np.zeros((self.nrow, self.ncol))
 
     def setGridPosition(self, posx, posy):
+        raise NotImplementedError
 
         self.offx = posx
         self.offy = posy
@@ -90,11 +99,14 @@ class Grid(QObject):
         if self.scene is not None:
 
             self.undrawGrid()
-        
-            cell_width = self.width / self.ncol
-            cell_height = self.height / self.nrow
 
-            pen_white = QPen(Qt.white, 2, Qt.SolidLine)
+            actual_width = self.width - 2 * self.offx
+            actual_height = self.height - 2 * self.offy
+        
+            cell_width = self.column_width
+            cell_height = actual_height / self.nrow
+
+            pen_white = QPen(Qt.black, 2, Qt.DashLine)
             pen_white.setCosmetic(True)
 
             brush = QBrush(Qt.SolidPattern)
@@ -109,7 +121,7 @@ class Grid(QObject):
             # create cells' rectangles
             for c in range(0, self.ncol):
                 for r in range(0, self.nrow):
-                    xc = c * cell_width
+                    xc = c * (cell_width + self.intercolumn_space)
                     yc = r * cell_height
 
                     value = self.cell_values[r, c]

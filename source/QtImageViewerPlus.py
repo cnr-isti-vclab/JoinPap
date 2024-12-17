@@ -157,7 +157,7 @@ class QtImageViewerPlus(QGraphicsView):
         self.transparency_value = 0.5
 
         # Z values (for drawing the scene correctly)
-        self.Z_VALUE_WORKING_AREA = 1
+        self.Z_VALUE_WORKING_AREA = -1
         self.Z_VALUE_FRAGMENTS = 2
         self.Z_VALUE_BORDERS = 3
         self.Z_VALUE_IDS = 4
@@ -361,7 +361,7 @@ class QtImageViewerPlus(QGraphicsView):
 
         if self.project is not None:
             if self.project.grid is not None:
-                if not self.project.grid_rects:
+                if True: # not self.project.grid_rects:
                     # the grid has never been drawn
                     self.project.grid.setScene(self.scene)
                     self.project.grid.drawGrid()

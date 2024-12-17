@@ -708,28 +708,31 @@ class PapyrLab(QMainWindow):
         Create a new grid. This special grid is used to better supervise the annotation work.
         """
 
-        if len(self.project.images) < 1:
-            self.btnCreateGrid.setChecked(False)
-            return
+        # if len(self.project.images) < 1:
+        #     self.btnCreateGrid.setChecked(False)
+        #     return
 
-        if self.activeviewer.image.grid is not None:
+        if self.gridWidget is not None:
 
             reply = QMessageBox.question(self, self.PAPYRLAB_VERSION,
-                                         "Would you like to remove the existing <em>grid</em> and create a new one?",
+                                         "Would you like to remove the existing <em>grid</em>?",
                                          QMessageBox.Yes | QMessageBox.No)
             if reply == QMessageBox.No:
-                self.btnCreateGrid.setChecked(False)
+                self.btnCreateGrid.setChecked(True)
                 return
             else:
-                self.activeviewer.image.grid.undrawGrid()
+                self.gridWidget.grid.undrawGrid()
                 self.activeviewer.hideGrid()
                 self.btnGrid.setChecked(False)
-
-        if self.gridWidget is None:
+                self.btnCreateGrid.setChecked(False)
+                self.gridWidget = None
+                self.project.grid = None
+        else:
             self.gridWidget = QtGridWidget(self.activeviewer, self)
             self.gridWidget.show()
             self.gridWidget.accepted.connect(self.assignGrid)
             self.gridWidget.btnCancel.clicked.connect(self.cancelGrid)
+            self.project.grid = self.gridWidget.grid
 
 
     @pyqtSlot()
@@ -745,11 +748,12 @@ class PapyrLab(QMainWindow):
         """
         Assign the grid created to the corresponding image.
         """
-        self.activeviewer.image.grid = self.gridWidget.grid
+        # self.activeviewer.image.grid = self.gridWidget.grid
         self.resetToolbar()
+        self.btnCreateGrid.setChecked(True)
         self.activeviewer.showGrid()
         self.checkBoxGrid.setChecked(True)
-        self.gridWidget = None
+        # self.gridWidget = None
 
     def updateRecentFileActions(self):
 

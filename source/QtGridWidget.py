@@ -39,27 +39,28 @@ class QtGridWidget(QWidget):
         self.setMinimumHeight(100)
 
         self.viewerplus = viewerplus
-        self.pixels_to_meters = viewerplus.image.pixelSize() / 1000.0
-        self.width_m = self.pixelsToMeters(viewerplus.image.width)
-        self.height_m = self.pixelsToMeters(viewerplus.image.height)
+        pixelSize = 16.0   # TODO: get from somewhere else
+        self.pixels_to_meters = pixelSize / 1000.0
 
         self.posx_m = 0.0
         self.posy_m = 0.0
 
-        self.grid = Grid()
+        self.grid = Grid(viewerplus.project.working_area[0], viewerplus.project.working_area[1])
 
-        TEXT_WIDTH = 100
+        TEXT_WIDTH = 200
 
         self.fields = {
-            "width": {"name": "Width (m):", "value": str(self.width_m), "place": "Width of your grid (m)", "width": 200 ,"action": None},
-
-            "height": {"name": "Height (m):", "value": str(self.height_m), "place": "Height of your grid (m)", "width": 200, "action": None},
-
-            "number_cell_y": {"name": "Rows:", "value": "8", "place": "Number of horizontal cells", "width": 200, "action": None},
+            # "number_cell_y": {"name": "Rows:", "value": "8", "place": "Number of horizontal cells", "width": 200, "action": None},
 
             "number_cell_x": {"name": "Columns :", "value": "8", "place": "Number of vertical cells", "width": 200,  "action": None},
 
-            "position": {"name": "Position:", "value": "(0,0)", "place": "Pick the top-left point", "width": 200, "action": self.toggleSetPosition}
+            "cell_width": {"name": "Cell Width (m):", "value": "50.0", "place": "Width of each cell (m)", "width": 200, "action": None},
+
+            "margin_x": {"name": "Left Margin (m):", "value": "5.0", "place": "Margin in X direction (m)", "width": 200, "action": None},
+
+            "margin_y": {"name": "Top Margin (m):", "value": "5.0", "place": "Margin in Y direction (m)", "width": 200, "action": None},
+
+            "intercolumn_space": {"name": "Inter-column space (m):", "value": "10.0", "place": "Space between columns (m)", "width": 200, "action": None},
         }
         self.data = {}
 
@@ -79,14 +80,14 @@ class QtGridWidget(QWidget):
             field["edit"] = edit
 
             button = None
-            if field["action"] is not None:
-                button = QPushButton("")
-                button.setFixedWidth(30)
-                button.setFixedHeight(30)
-                field["button"] = button
-                button.setCheckable(True)
-                button.setChecked(False)
-                button.clicked.connect(field["action"])
+            # if field["action"] is not None:
+            #     button = QPushButton("")
+            #     button.setFixedWidth(30)
+            #     button.setFixedHeight(30)
+            #     field["button"] = button
+            #     button.setCheckable(True)
+            #     button.setChecked(False)
+            #     button.clicked.connect(field["action"])
 
             layout = QHBoxLayout()
             layout.setAlignment(Qt.AlignLeft)
@@ -98,8 +99,8 @@ class QtGridWidget(QWidget):
             layoutV.addLayout(layout)
 
 
-        WorkingAreaIcon = QIcon("icons\\corner.png")
-        self.fields["position"]["button"].setIcon(WorkingAreaIcon)
+        # WorkingAreaIcon = QIcon("icons\\corner.png")
+        # self.fields["position"]["button"].setIcon(WorkingAreaIcon)
 
         buttons_layout = QHBoxLayout()
 
@@ -125,10 +126,11 @@ class QtGridWidget(QWidget):
         self.setGrid()
 
         # connections
-        self.fields["width"]["edit"].editingFinished.connect(self.setGrid)
-        self.fields["height"]["edit"].editingFinished.connect(self.setGrid)
+        self.fields["cell_width"]["edit"].editingFinished.connect(self.setGrid)
         self.fields["number_cell_x"]["edit"].editingFinished.connect(self.setGrid)
-        self.fields["number_cell_y"]["edit"].editingFinished.connect(self.setGrid)
+        self.fields["margin_x"]["edit"].editingFinished.connect(self.setGrid)
+        self.fields["margin_y"]["edit"].editingFinished.connect(self.setGrid)
+        self.fields["intercolumn_space"]["edit"].editingFinished.connect(self.setGrid)
 
     def pixelsToMeters(self, px):
         return round(px * self.pixels_to_meters, 3)
@@ -141,10 +143,13 @@ class QtGridWidget(QWidget):
         for key, field in self.fields.items():
             self.data[key] = field["edit"].text()
 
-        w = self.metersToPixels(float(self.data["width"]))
-        h = self.metersToPixels(float(self.data["height"]))
+        cell_width = self.metersToPixels(float(self.data["cell_width"]))
+        margin_x = self.metersToPixels(float(self.data["margin_x"]))
+        margin_y = self.metersToPixels(float(self.data["margin_y"]))
+        intercolumn_space = self.metersToPixels(float(self.data["intercolumn_space"]))
+
         self.grid.undrawGrid()
-        self.grid.setGrid(w, h, int(self.data["number_cell_x"]), int(self.data["number_cell_y"]))
+        self.grid.setGrid(cell_width, int(self.data["number_cell_x"]), int(margin_x), int(margin_y), int(intercolumn_space))
         self.grid.drawGrid()
 
     @pyqtSlot(float, float)
@@ -172,9 +177,9 @@ class QtGridWidget(QWidget):
     @pyqtSlot()
     def apply(self):
 
-        button = self.fields["position"]["button"]
-        if button.isChecked():
-             self.viewerplus.leftMouseButtonPressed[float, float].disconnect()
+        # button = self.fields["position"]["button"]
+        # if button.isChecked():
+        #      self.viewerplus.leftMouseButtonPressed[float, float].disconnect()
         self.accepted.emit()
         self.close()
 
