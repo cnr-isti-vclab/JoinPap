@@ -56,20 +56,23 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         pass
+
     def closeEvent(self, event):
 
         papyrlab = self.centralWidget()
-        if papyrlab.project.filename is not None:
-            box = QMessageBox()
-            reply = box.question(self, papyrlab.PAPYRLAB_VERSION, "Do you want to save changes to " + papyrlab.project.filename,
-                                 QMessageBox.Cancel | QMessageBox.Yes | QMessageBox.No)
+        box = QMessageBox()
+        reply = box.question(self, papyrlab.PAPYRLAB_VERSION, "Do you want to save changes?",
+                                QMessageBox.Cancel | QMessageBox.Yes | QMessageBox.No)
 
-            if reply == QMessageBox.Yes:
+        if reply == QMessageBox.Yes:
+            if papyrlab.project.filename is not None:
                 papyrlab.saveProject()
+            else:
+                papyrlab.saveAsProject()
 
-            if reply == QMessageBox.Cancel:
-                event.ignore()
-                return
+        if reply == QMessageBox.Cancel:
+            event.ignore()
+            return
 
         super(MainWindow, self).closeEvent(event)
 
@@ -712,7 +715,7 @@ class PapyrLab(QMainWindow):
         #     self.btnCreateGrid.setChecked(False)
         #     return
 
-        if self.gridWidget is not None:
+        if self.project.grid is not None:
 
             reply = QMessageBox.question(self, self.PAPYRLAB_VERSION,
                                          "Would you like to remove the existing <em>grid</em>?",
@@ -721,7 +724,7 @@ class PapyrLab(QMainWindow):
                 self.btnCreateGrid.setChecked(True)
                 return
             else:
-                self.gridWidget.grid.undrawGrid()
+                self.project.grid.undrawGrid()
                 self.activeviewer.hideGrid()
                 self.btnGrid.setChecked(False)
                 self.btnCreateGrid.setChecked(False)
@@ -1356,6 +1359,9 @@ class PapyrLab(QMainWindow):
 
 
     def _addToWorkspace(self, images_names):
+        
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
         fragment_sizes = []
         valid_filenames = []
         for filename in images_names:
@@ -1382,6 +1388,8 @@ class PapyrLab(QMainWindow):
         self.image_set_widget.updateComboGroups()
         self.viewerplus.drawAllFragments()
         self.updateToolStatus()
+
+        QApplication.restoreOverrideCursor()
 
     @pyqtSlot()
     def addImages(self):

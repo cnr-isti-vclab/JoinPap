@@ -78,6 +78,11 @@ class Project(object):
                     group = Group(fragment.group_id)
                     group.append(fragment)
 
+        # load grid
+        if "grid" in data:
+            self.grid = Grid(0, 0)
+            self.grid.fromDict(data["grid"])
+
         return True
 
     def createGroup(self):

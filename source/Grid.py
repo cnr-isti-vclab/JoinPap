@@ -34,9 +34,9 @@ class Grid(QObject):
 
         self.scene = None
         self.cell_values = None
-        self.text_items = []
+        self.text_items = {'front': [], 'back': []}
         self.notes = []
-        self.grid_rects = []
+        self.grid_rects = {'front': [], 'back': []}
 
 
     def save(self):
@@ -94,7 +94,8 @@ class Grid(QObject):
         for rect in self.grid_rects:
             rect.setPos(self.offx, self.offy)
 
-    def drawGrid(self):
+    def drawGrid(self, reverse=False):
+        key = "front" if not reverse else "back"
 
         if self.scene is not None:
 
@@ -121,7 +122,7 @@ class Grid(QObject):
             # create cells' rectangles
             for c in range(0, self.ncol):
                 for r in range(0, self.nrow):
-                    xc = c * (cell_width + self.intercolumn_space)
+                    xc = c * (cell_width + self.intercolumn_space) if not reverse else self.width - cell_width - c * (cell_width + self.intercolumn_space)
                     yc = r * cell_height
 
                     value = self.cell_values[r, c]
@@ -133,8 +134,8 @@ class Grid(QObject):
                     elif value == 2:
                         rect = self.scene.addRect(xc, yc, cell_width, cell_height, pen=pen_white, brush=brush50)
 
-                    rect.setPos(self.offx, self.offy)
-                    self.grid_rects.append(rect)
+                    rect.setPos(self.offx if not reverse else -self.offx, self.offy)
+                    self.grid_rects[key].append(rect)
 
             # create text graphics item to visualize the notes
             font = QFont("Roboto", 15)
@@ -149,29 +150,31 @@ class Grid(QObject):
                 text_item.setPlainText(txt)
                 text_item.setFont(font)
                 text_item.setDefaultTextColor(Qt.black)
-                text_item.setPos(x, y)
+                text_item.setPos(x if not reverse else -x, y)   # TODO: check this if notes will ever be used
                 text_item.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsFocusable)
                 text_item.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextEditable)
                 text_item.setZValue(10)
                 text_item.focusOut.connect(self.updateNotes)
-                self.text_items.append(text_item)
+                self.text_items[key].append(text_item)
 
 
     def setVisible(self, visible=True):
-        for rect in self.grid_rects:
-            rect.setVisible(visible)
+        for key in ["front", "back"]:
+            for rect in self.grid_rects[key]:
+                rect.setVisible(visible)
 
-        for note in self.text_items:
-            note.setVisible(visible)
+            for note in self.text_items[key]:
+                note.setVisible(visible)
 
     def undrawGrid(self):
-        for rect in self.grid_rects:
-            self.scene.removeItem(rect)
-        del self.grid_rects[:]
+        for key in ["front", "back"]:
+            for rect in self.grid_rects[key]:
+                self.scene.removeItem(rect)
+            del self.grid_rects[key][:]
 
-        for text_item in self.text_items:
-            self.scene.removeItem(text_item)
-        del self.text_items[:]
+            for text_item in self.text_items[key]:
+                self.scene.removeItem(text_item)
+            del self.text_items[key][:]
 
     def setOpacity(self, opacity):
 

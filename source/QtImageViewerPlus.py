@@ -198,6 +198,7 @@ class QtImageViewerPlus(QGraphicsView):
 
         self.drawWorkingArea()
         self.drawAllFragments()
+        self.showGrid()
 
         self.scene.invalidate()
 
@@ -361,10 +362,13 @@ class QtImageViewerPlus(QGraphicsView):
 
         if self.project is not None:
             if self.project.grid is not None:
-                if True: # not self.project.grid_rects:
-                    # the grid has never been drawn
-                    self.project.grid.setScene(self.scene)
-                    self.project.grid.drawGrid()
+                self.parent.btnCreateGrid.setChecked(True)
+                self.project.grid.setScene(self.scene)
+                if self.back_vis:
+                    pass    # TODO: work on this if we want grid to be drawn on the back
+                    # self.project.grid.drawGrid(reverse=False)
+                else:
+                    self.project.grid.drawGrid(reverse=False)
                 self.project.grid.setVisible(True)
                 self.show_grid = True
             else:
