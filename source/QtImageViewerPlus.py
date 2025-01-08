@@ -268,6 +268,8 @@ class QtImageViewerPlus(QGraphicsView):
         """
         self.resetTransform()
         self.scale(self.zoom_factor, self.zoom_factor)
+        if self.rotated:
+            self.rotate(180)
         self.invalidateScene()
 
     def drawWorkingArea(self):
