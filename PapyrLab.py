@@ -239,6 +239,10 @@ class PapyrLab(QMainWindow):
         self.checkBoxGrid.stateChanged[int].connect(self.viewerplus2.toggleGrid)
         self.checkBoxGrid.stateChanged[int].connect(self.saveGuiPreferences)
 
+        self.rotateVerso = QCheckBox("Rotate Verso")
+        self.rotateVerso.stateChanged[int].connect(self.viewerplus2.toggleRotate)
+        self.rotateVerso.stateChanged[int].connect(self.saveGuiPreferences)
+
         self.labelZoom = QLabel("Zoom:")
         self.labelMouseLeft = QLabel("x:")
         self.labelMouseTop = QLabel("y:")
@@ -256,6 +260,7 @@ class PapyrLab(QMainWindow):
         layout_header.addWidget(self.checkBoxBorders)
         layout_header.addWidget(self.checkBoxIds)
         layout_header.addWidget(self.checkBoxGrid)
+        layout_header.addWidget(self.rotateVerso)
         layout_header.addStretch()
         layout_header.addWidget(self.labelZoom)
         layout_header.addWidget(self.labelZoomInfo)
@@ -411,6 +416,8 @@ class PapyrLab(QMainWindow):
         self.checkBoxGrid.setChecked(value)
         value = settings.value("gui-checkbox-grid", type=bool, defaultValue=False)
         self.checkBoxIds.setChecked(value)
+        value = settings.value("gui-checkbox-rotate", type=bool, defaultValue=False)
+        self.rotateVerso.setChecked(value)
 
     @pyqtSlot()
     def saveGuiPreferences(self):
@@ -419,7 +426,7 @@ class PapyrLab(QMainWindow):
         settings.setValue("gui-checkbox-borders", self.checkBoxBorders.isChecked())
         settings.setValue("gui-checkbox-ids", self.checkBoxIds.isChecked())
         settings.setValue("gui-checkbox-grid", self.checkBoxGrid.isChecked())
-
+        settings.setValue("gui-checkbox-rotate", self.rotateVerso.isChecked())
 
     #just to make the code less verbose
     def newAction(self, text, shortcut, callback):

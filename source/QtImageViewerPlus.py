@@ -389,6 +389,10 @@ class QtImageViewerPlus(QGraphicsView):
         else:
             self.showGrid()
 
+    @pyqtSlot(int)
+    def toggleRotate(self, check):
+        self.rotate(180)
+
     def enableIds(self):
 
         if self.project is not None:
