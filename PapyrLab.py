@@ -740,6 +740,7 @@ class PapyrLab(QMainWindow):
 
     @pyqtSlot()
     def cancelGrid(self):
+        self.project.grid = None
         self.gridWidget.grid.undrawGrid()
         self.gridWidget.close()
         self.gridWidget = None
