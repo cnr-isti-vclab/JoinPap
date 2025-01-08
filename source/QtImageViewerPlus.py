@@ -24,7 +24,7 @@
 
 import os.path
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QFileInfo, QDir, pyqtSlot, pyqtSignal, QT_VERSION_STR
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QPainterPath, QPen, QColor, QFont, QBrush
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QPainterPath, QPen, QColor, QFont, QBrush, QTransform
 from PyQt5.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QFileDialog, QGraphicsItem, QGraphicsSimpleTextItem, QPlainTextEdit,QSizePolicy
 
 from source.Fragment import Fragment
@@ -191,6 +191,7 @@ class QtImageViewerPlus(QGraphicsView):
         self.tools.createTools()
 
         self.parent = parent
+        self.rotated = False
 
     def setProject(self, project):
 
@@ -391,6 +392,7 @@ class QtImageViewerPlus(QGraphicsView):
 
     @pyqtSlot(int)
     def toggleRotate(self, check):
+        self.rotated = check
         self.rotate(180)
 
     def enableIds(self):
@@ -748,7 +750,15 @@ class QtImageViewerPlus(QGraphicsView):
                 self.zoom_factor = self.ZOOM_FACTOR_MAX
 
             self.resetTransform()
-            self.scale(self.zoom_factor, self.zoom_factor)
+
+            # Create a new transformation matrix for zooming
+            zoom_transform = QTransform()
+            zoom_transform.scale(self.zoom_factor, self.zoom_factor)
+            rotate_transform = QTransform()
+            rotate_transform.rotate(180)
+
+            new_transform = rotate_transform * zoom_transform if self.rotated else zoom_transform
+            self.setTransform(new_transform)
 
             delta = self.mapToScene(view_pos) - self.mapToScene(self.viewport().rect().center())
             self.centerOn(scene_pos - delta)
