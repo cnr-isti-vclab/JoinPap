@@ -1178,6 +1178,10 @@ class PapyrLab(QMainWindow):
         numR = len(posR)
 
         maxMatches = min(numL, numR, numL+dy, numR-dy)
+        if maxMatches <= 1:
+            # TODO: understand why this happens. This is to temporarily avoid a potential crash
+            print("No matches found with these fragments", file=sys.stderr)
+            return
         xL = posL[min(dy, 0):min(dy, 0) + maxMatches][1]
         xR = posR[max(dy, 0):max(dy, 0) + maxMatches][1]
 
