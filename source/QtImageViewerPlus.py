@@ -32,19 +32,39 @@ from source.Project import Project
 from source.Tools import Tools
 
 class TextItem(QGraphicsSimpleTextItem):
-    def __init__(self, text, font):
+    def __init__(self, text, font, background_color=QColor(80, 80, 80)):
         QGraphicsSimpleTextItem.__init__(self)
         self.setText(text)
         self.setFont(font)
+        self.background_color = background_color
+        print(self.boundingRect().center())
+        self.setTransformOriginPoint(self.boundingRect().center())
 
     def paint(self, painter, option, widget):
+        # painter.translate(self.boundingRect().topLeft())
+        # super().paint(painter, option, widget)
+        # painter.translate(-self.boundingRect().topLeft())
+        painter.save()
         painter.translate(self.boundingRect().topLeft())
+        
+        # Draw the background rectangle
+        painter.setBrush(QBrush(self.background_color))
+        painter.setPen(Qt.NoPen)
+        painter.drawRect(self.boundingRect())
+        
         super().paint(painter, option, widget)
-        painter.translate(-self.boundingRect().topLeft())
+        painter.restore()
 
-    def boundingRect(self):
-        b = super().boundingRect()
-        return QRectF(b.x()-b.width()/2.0, b.y()-b.height()/2.0, b.width(), b.height())
+    def setPos(self, *pos):
+        if len(pos) == 1:
+            super().setPos(pos[0])
+        else:
+            x, y = pos[0], pos[1]
+            super().setPos(x - self.boundingRect().width()/2.0, y - self.boundingRect().height()/2.0)
+
+    # def boundingRect(self):
+    #     b = super().boundingRect()
+    #     return QRectF(b.x()-b.width()/2.0, b.y()-b.height()/2.0, b.width(), b.height())
 
 
 class NoteWidget(QPlainTextEdit):
@@ -395,6 +415,10 @@ class QtImageViewerPlus(QGraphicsView):
     @pyqtSlot(int)
     def toggleRotate(self, check):
         self.rotated = check
+        # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
+        for fragment in self.project.fragments:
+            if fragment.id_back_item is not None:
+                fragment.id_back_item.setRotation(-180 if check else 0)
         self.rotate(180)
 
     def enableIds(self):
@@ -403,6 +427,8 @@ class QtImageViewerPlus(QGraphicsView):
             for fragment in self.project.fragments:
                 if fragment.id_item is not None:
                     fragment.id_item.setVisible(True)
+                if fragment.id_back_item is not None:
+                    fragment.id_back_item.setVisible(True)
 
         self.ids_enabled = True
 
@@ -412,6 +438,8 @@ class QtImageViewerPlus(QGraphicsView):
             for fragment in self.project.fragments:
                 if fragment.id_item is not None:
                     fragment.id_item.setVisible(False)
+                if fragment.id_back_item is not None:
+                    fragment.id_back_item.setVisible(False)
 
         self.ids_enabled = False
 
@@ -447,10 +475,12 @@ class QtImageViewerPlus(QGraphicsView):
             if fragment in self.selected_fragments:
                 self.addFragmentBorder(fragment)
 
-            font_size = 12
-            fragment.id_back_item = TextItem(str(fragment.id), QFont("Roboto", font_size, QFont.Bold))
-            fragment.id_back_item.setPos(W - fragment.center[0] - fragment.bbox[2], fragment.center[1])
-            fragment.id_back_item.setTransformOriginPoint(QPointF(fragment.center[0] + 14.0, fragment.center[1] + 14.0))
+            font_size = 70
+            fragment.id_back_item = TextItem(str(os.path.basename(fragment.filename)), QFont("Roboto", font_size, QFont.Bold))
+            fragment.id_back_item.setPos(W - fragment.center[0], fragment.center[1])
+            # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
+            if self.rotated:
+                fragment.id_back_item.setRotation(-180)
             fragment.id_back_item.setZValue(self.Z_VALUE_IDS)
             fragment.id_back_item.setBrush(Qt.white)
 
@@ -482,10 +512,11 @@ class QtImageViewerPlus(QGraphicsView):
             if fragment in self.selected_fragments:
                 self.addFragmentBorder(fragment)
 
-            font_size = 12
-            fragment.id_item = TextItem(str(fragment.id),  QFont("Roboto", font_size, QFont.Bold))
+            font_size = 70
+            fragment.id_item = TextItem(str(os.path.basename(fragment.filename)), QFont("Roboto", font_size, QFont.Bold))
+            # bbox = fragment.bbox
+            # fragment.id_item.setTransformOriginPoint(QPointF(fragment))
             fragment.id_item.setPos(fragment.center[0], fragment.center[1])
-            fragment.id_item.setTransformOriginPoint(QPointF(fragment.center[0] + 14.0, fragment.center[1] + 14.0))
             fragment.id_item.setZValue(self.Z_VALUE_IDS)
             fragment.id_item.setBrush(Qt.white)
 
