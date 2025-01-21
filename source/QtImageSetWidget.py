@@ -53,7 +53,7 @@ class QtImageSetWidget(QWidget):
     def __init__(self, project, parent=None):
         super(QtImageSetWidget, self).__init__(parent)
 
-        self.setStyleSheet("background-color: rgb(40,40,40); color: white")
+        self.setStyleSheet("background-color: rgb(70,70,70); color: white")
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
         self.setMinimumWidth(300)
         self.setMinimumHeight(100)
