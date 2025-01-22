@@ -1205,6 +1205,8 @@ class PapyrLab(QMainWindow):
         self.viewerplus.drawFragment(fragR)
         self.viewerplus2.drawFragment(fragR)
 
+        self.btnEvaluation.setChecked(False)
+
 
     @pyqtSlot()
     def toggleSplitScreen(self):

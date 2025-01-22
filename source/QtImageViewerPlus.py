@@ -37,7 +37,6 @@ class TextItem(QGraphicsSimpleTextItem):
         self.setText(text)
         self.setFont(font)
         self.background_color = background_color
-        print(self.boundingRect().center())
         self.setTransformOriginPoint(self.boundingRect().center())
 
     def paint(self, painter, option, widget):
@@ -55,12 +54,19 @@ class TextItem(QGraphicsSimpleTextItem):
         super().paint(painter, option, widget)
         painter.restore()
 
+    def pos(self):
+        actual_pos = super().pos()
+        return QPointF(actual_pos.x() + self.boundingRect().width() / 2.0, actual_pos.y() + self.boundingRect().height() / 2.0)
+
     def setPos(self, *pos):
+        displ_x = self.boundingRect().width()/2.0
+        displ_y = self.boundingRect().height()/2.0
+
         if len(pos) == 1:
-            super().setPos(pos[0])
+            super().setPos(pos[0] - QPointF(displ_x, displ_y))
         else:
             x, y = pos[0], pos[1]
-            super().setPos(x - self.boundingRect().width()/2.0, y - self.boundingRect().height()/2.0)
+            super().setPos(x - displ_x, y - displ_y)
 
     # def boundingRect(self):
     #     b = super().boundingRect()
@@ -416,9 +422,10 @@ class QtImageViewerPlus(QGraphicsView):
     def toggleRotate(self, check):
         self.rotated = check
         # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
-        for fragment in self.project.fragments:
-            if fragment.id_back_item is not None:
-                fragment.id_back_item.setRotation(-180 if check else 0)
+        if self.project:
+            for fragment in self.project.fragments:
+                if fragment.id_back_item is not None:
+                    fragment.id_back_item.setRotation(-180 if check else 0)
         self.rotate(180)
 
     def enableIds(self):
