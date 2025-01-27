@@ -134,9 +134,10 @@ class PapyrLab(QMainWindow):
 
         self.btnPan                = self.newButton("hand.png",    "Pan/Zoom",              flatbuttonstyle1, self.pan)
         self.btnMove               = self.newButton("move.png",    "Move/Rotate fragment",  flatbuttonstyle1, self.move)
-        self.btnFreehand           = self.newButton("pencil.png",  "Freehand border",       flatbuttonstyle1, self.freehand)
-        self.btnEditBorder         = self.newButton("edit.png",    "Edit border",           flatbuttonstyle1, self.editBorder)
+        self.btnFreehand           = self.newButton("cross.png",  "Freehand border",       flatbuttonstyle1, self.freehand) # was pencil.png
+        self.btnEditBorder         = self.newButton("cross.png",    "Edit border",           flatbuttonstyle1, self.editBorder) # was edit.png
         self.btnEvaluation         = self.newButton("auto.png",    "Evaluate/suggest",      flatbuttonstyle2, self.evaluation)
+        self.btnDrawLine           = self.newButton("edit.png",    "Draw line",             flatbuttonstyle1, self.drawLine)
 
         # Split Screen operation removed from the toolbar
         self.pxmapSeparator = QPixmap("icons/separator.png")
@@ -154,14 +155,15 @@ class PapyrLab(QMainWindow):
         layout_tools.setSpacing(0)
         layout_tools.addWidget(self.btnPan)
         layout_tools.addWidget(self.btnMove)
-        layout_tools.addWidget(self.btnFreehand)
-        layout_tools.addWidget(self.btnEditBorder)
+        # layout_tools.addWidget(self.btnFreehand)
+        # layout_tools.addWidget(self.btnEditBorder)
         layout_tools.addWidget(self.btnEvaluation)
+        layout_tools.addWidget(self.btnDrawLine)
         layout_tools.addSpacing(3)
         layout_tools.addWidget(self.labelSeparator)
         layout_tools.addSpacing(3)
         layout_tools.addWidget(self.btnCreateGrid)
-        layout_tools.addWidget(self.btnGrid)
+        # layout_tools.addWidget(self.btnGrid)
         layout_tools.addSpacing(3)
         layout_tools.addWidget(self.labelSeparator2)
         layout_tools.addSpacing(3)
@@ -1082,7 +1084,8 @@ class PapyrLab(QMainWindow):
             "PAN"          : ["Pan"          , self.btnPan],
             "MOVE"         : ["Move"       , self.btnMove],
             "EDITBORDER"   : ["Edit Border"  , self.btnEditBorder],
-            "FREEHAND"     : ["Freehand"     , self.btnFreehand]
+            "FREEHAND"     : ["Freehand"     , self.btnFreehand],
+            "DRAWLINE"     : ["Draw Line"    , self.btnDrawLine],
         }
         newtool = tools[tool]
         self.resetToolbar()
@@ -1103,6 +1106,13 @@ class PapyrLab(QMainWindow):
         Activate the "move" tool.
         """
         self.setTool("MOVE")
+
+    @pyqtSlot()
+    def drawLine(self):
+        """
+        Activate the "draw line" tool.
+        """
+        self.setTool("DRAWLINE")
 
     @pyqtSlot()
     def rotate(self):
@@ -1304,7 +1314,7 @@ class PapyrLab(QMainWindow):
     def updateToolStatus(self):
 
         for button in [self.btnPan, self.btnMove, self.btnFreehand,
-                       self.btnEditBorder, self.btnCreateGrid, self.btnGrid]:
+                       self.btnEditBorder]:
             button.setEnabled(len(self.project.fragments) > 0)
 
     @pyqtSlot()

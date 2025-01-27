@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from source.tools.PickPoints import PickPoints
 from source.tools.EditPoints import EditPoints
 from source.tools.Scribbles import Scribbles
+from source.tools.DrawLine import DrawLine
 
 from source.tools.Move import Move
 
@@ -27,7 +28,8 @@ class Tools(object):
 
         # create all the tools
         self.tools = {
-            "MOVE": Move(self.viewerplus)
+            "MOVE": Move(self.viewerplus),
+            "DRAWLINE": DrawLine(self.viewerplus),
         }
 
     def setTool(self, tool):
