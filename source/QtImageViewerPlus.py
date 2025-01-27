@@ -623,8 +623,6 @@ class QtImageViewerPlus(QGraphicsView):
         selected_fragment = self.project.fragmentClicked(x, y)
 
         if selected_fragment is not None:
-            self.parent.image_set_widget.scrollToFragment(selected_fragment)
-
             if selected_fragment.group_id >= 0:
                 fragments = self.project.getFragmentsOfAGroup(selected_fragment)
                 for fragment in fragments:
@@ -641,6 +639,7 @@ class QtImageViewerPlus(QGraphicsView):
                         self.addToSelectedList(selected_fragment)
                         self.updateInfoPanel.emit(selected_fragment)
 
+            self.parent.image_set_widget.scrollToFragment(selected_fragment)
             self.newSelection.emit()
         else:
             self.resetSelection()
@@ -684,6 +683,8 @@ class QtImageViewerPlus(QGraphicsView):
                 #used from area selection and pen drawing,
                 if (self.panEnabled and not (mods & Qt.ShiftModifier)):
                     self.setDragMode(QGraphicsView.ScrollHandDrag)
+                    self.resetSelection()
+                    self.selectOp(x, y)
                 else:
                     self.dragSelectionStart = [x, y]
 

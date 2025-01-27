@@ -148,17 +148,18 @@ class QtImageSetWidget(QWidget):
             self.grid_layout.addWidget(mini_image, row, col)
 
             # Connect the click event to highlight the selected item
-            mini_image.mousePressEvent = lambda event, img=mini_image: self.highlightItem(img)
+            mini_image.mousePressEvent = lambda event, img=mini_image: self.highlightItem(img, set_fragment_selection=False)
 
     def clearHighlights(self):
         for mini_image in self.mini_images:
             mini_image.lbl.setStyleSheet("")
 
-    def highlightItem(self, item, center=True):
+    def highlightItem(self, item, center=True, set_fragment_selection=False):
         self.clearHighlights()
         item.lbl.setStyleSheet("background-color: lightgray;")
-        self.parent.viewerplus.resetSelection()
-        self.parent.viewerplus.addToSelectedList(item.ref)
+        if set_fragment_selection:
+            self.parent.viewerplus.resetSelection()
+            self.parent.viewerplus.addToSelectedList(item.ref)
         if center:
             self.parent.viewerplus.centerOn(item.ref.center[0], item.ref.center[1])
 
