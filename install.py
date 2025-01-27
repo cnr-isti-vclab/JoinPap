@@ -143,7 +143,7 @@ elif osused == 'Darwin':
 gdal_package = 'gdal==' + gdal_version
 
 # build coraline
-if osused != 'Windows':
+if False: #osused != 'Windows':
     try:
         out = subprocess.check_output(['cmake', '--version'])
         if out[0] != 0:
@@ -251,7 +251,7 @@ else:
     #delete wheel files
     os.remove(this_directory + '/' + filename_gdal)
     os.remove(this_directory + '/' + filename_rasterio)
-
+'''
 # check for other networks
 print('Downloading networks...')
 base_url = 'http://taglab.isti.cnr.it/models/'
@@ -276,3 +276,4 @@ for net_name in net_file_names:
             raise Exception("Cannot download " + net_name + ".")
     else:
         print(net_name + ' already exists.')
+'''
