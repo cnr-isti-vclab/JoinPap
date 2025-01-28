@@ -361,6 +361,7 @@ class PapyrLab(QMainWindow):
         self.settings_widget.working_area_settings.workingAreaBackgroundChanged[str].connect(
             self.viewerplus.setWorkingAreaBackgroundColor)
         self.settings_widget.working_area_settings.workingAreaPenChanged[str, int].connect(self.viewerplus.setWorkingAreaPen)
+        self.settings_widget.working_area_settings.workingAreaSizeChanged[int, int].connect(self.setWorkingAreaFromSettingsWidget)
 
         self.settings_widget.drawing_settings.borderPenChanged[str, int].connect(self.viewerplus2.setBorderPen)
         self.settings_widget.drawing_settings.selectionPenChanged[str, int].connect(self.viewerplus2.setSelectionPen)
@@ -666,7 +667,7 @@ class PapyrLab(QMainWindow):
 
         self.projectmenu = menubar.addMenu("&Project")
         self.projectmenu.setStyleSheet(styleMenu)
-        self.projectmenu.addAction(setWorkingAreaAct)
+        # self.projectmenu.addAction(setWorkingAreaAct) # FIXME: temporary removed since already in the settings... is there a reason why it was replicated?
         self.projectmenu.addAction(addFolderAct)
         self.projectmenu.addAction(addImagesAct)
 
@@ -1324,7 +1325,7 @@ class PapyrLab(QMainWindow):
             self.working_area_widget = QtWorkingAreaWidget()
             self.working_area_widget.setWindowModality(Qt.WindowModal)
             self.working_area_widget.setWorkingArea(self.project.working_area)
-            self.working_area_widget.btnApply.clicked.connect(self.setWorkingArea)
+            self.working_area_widget.btnApply.clicked.connect(self.setWorkingAreaFromWorkingAreaWidget)
             self.working_area_widget.show()
         else:
             self.working_area_widget.show()
@@ -1336,13 +1337,17 @@ class PapyrLab(QMainWindow):
             self.viewerplus2.drawWorkingArea()
 
     @pyqtSlot()
-    def setWorkingArea(self):
+    def setWorkingAreaFromWorkingAreaWidget(self):
 
         self.project.setWorkingArea(self.working_area_widget.workingArea())
         self._setWorkingArea()
 
         self.working_area_widget.close()
         self.working_area_widget = None
+
+    def setWorkingAreaFromSettingsWidget(self, width, height):
+        self.project.setWorkingArea([width, height])
+        self._setWorkingArea()
 
     @pyqtSlot()
     def openProject(self):
@@ -1494,7 +1499,10 @@ class PapyrLab(QMainWindow):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             self.project.load(self.papyrlab_dir, filename)
-        except:
+            self.settings_widget.working_area_settings.setDefaultWAWidth(self.project.working_area[0])
+            self.settings_widget.working_area_settings.setDefaultWAHeight(self.project.working_area[1])
+        except Exception as e:
+            print(e)
             box = QMessageBox()
             box.setWindowTitle('Failed loading the project')
             box.setText("Could not load the file " + filename)

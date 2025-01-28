@@ -79,7 +79,7 @@ class Project(object):
                     group.append(fragment)
 
         # load grid
-        if "grid" in data:
+        if "grid" in data and data["grid"] is not None:
             self.grid = Grid(0, 0)
             self.grid.fromDict(data["grid"])
 

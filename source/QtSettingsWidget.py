@@ -28,6 +28,7 @@ class waSettingsWidget(QWidget):
 
     workingAreaBackgroundChanged = pyqtSignal(str)
     workingAreaPenChanged = pyqtSignal(str, int)
+    workingAreaSizeChanged = pyqtSignal(int, int)
 
     def __init__(self, settings, taglab_dir, parent=None):
         super(waSettingsWidget, self).__init__(parent)
@@ -116,20 +117,26 @@ class waSettingsWidget(QWidget):
     def widthChanged(self, txt):
         if self.edit_wa_width.validator().validate(txt, 0)[0] == QValidator.Acceptable:
             self.settings.setValue("default-wa-width", int(txt))
+            height = self.settings.value("default-wa-height", type=int)
+            self.workingAreaSizeChanged.emit(int(txt), height)
 
     @pyqtSlot(str)
     def heightChanged(self, txt):
-        if self.edit_wa_width.validator().validate(txt, 0)[0] == QValidator.Acceptable:
+        if self.edit_wa_height.validator().validate(txt, 0)[0] == QValidator.Acceptable:
             self.settings.setValue("default-wa-height", int(txt))
+            width = self.settings.value("default-wa-width", type=int)
+            self.workingAreaSizeChanged.emit(width, int(txt))
 
     def setDefaultWAWidth(self, width):
-
+        self.edit_wa_width.blockSignals(True)
         self.edit_wa_width.setText(str(width))
+        self.edit_wa_width.blockSignals(False)
         self.settings.setValue("default-wa-width", width)
 
     def setDefaultWAHeight(self, height):
-
+        self.edit_wa_height.blockSignals(True)
         self.edit_wa_height.setText(str(height))
+        self.edit_wa_height.blockSignals(False)
         self.settings.setValue("default-wa-height", height)
 
     @pyqtSlot()
@@ -442,8 +449,8 @@ class QtSettingsWidget(QWidget):
 
     def loadSettings(self):
 
-        self.default_wa_width = self.settings.value("default-wa-width", defaultValue=2000, type=int)
-        self.default_wa_height = self.settings.value("default-wa-height", defaultValue=2000, type=int)
+        self.default_wa_width = self.settings.value("default-wa-width", defaultValue=20000, type=int)
+        self.default_wa_height = self.settings.value("default-wa-height", defaultValue=5000, type=int)
 
         self.selection_pen_color = self.settings.value("selection-pen-color", defaultValue="255-255-255", type=str)
         self.selection_pen_width = self.settings.value("selection-pen-width", defaultValue=2, type=int)
