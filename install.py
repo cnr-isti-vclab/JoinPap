@@ -16,8 +16,8 @@ if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and sys.version_info[1] 
 something_wrong_with_nvcc = False
 flag_install_pythorch_cpu = False
 nvcc_version = ''
-torch_package = 'torch==1.10.0'
-torchvision_package = 'torchvision==0.11.1'
+torch_package = 'torch==1.11.0'
+torchvision_package = 'torchvision==0.12.0'
 
 # if the user wants to install cpu torch
 if len(sys.argv)==2 and sys.argv[1]=='cpu':
@@ -186,18 +186,20 @@ if False: #osused != 'Windows':
 install_requires = [
     'wheel',
     'pyqt5',
+    'numpy==1.24.4',
     'scikit-image==0.18',
     'scikit-learn',
     'pandas',
     'opencv-python',
     'matplotlib',
     'albumentations',
-    'shapely'
+    'shapely',
+    'rectangle-packer',
+    'git+https://github.com/fabiocarrara/papyrus-matching.git'
 ]
 
 # installing all the packages
-for package in install_requires:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+subprocess.check_call([sys.executable, "-m", "pip", "install", *install_requires])
 
 # installing torch, gdal and rasterio
 
@@ -206,74 +208,3 @@ subprocess.check_call([sys.executable, "-m", "pip", "install", torch_package,
                        '-f', 'https://download.pytorch.org/whl/torch_stable.html'])
 subprocess.check_call([sys.executable, "-m", "pip", "install", torchvision_package,
                        '-f', 'https://download.pytorch.org/whl/torch_stable.html'])
-
-# gdal and rasterio
-
-if osused != 'Windows':
-    subprocess.check_call([sys.executable, "-m", "pip", "install", gdal_package])
-    subprocess.check_call([sys.executable, "-m", "pip", "install", 'rasterio'])
-else:
-    base_url = 'http://taglab.isti.cnr.it/wheels/'
-    pythonversion = str(sys.version_info[0]) + str(sys.version_info[1])
-    # compute rasterio and gdal urls download
-    filename_gdal = 'GDAL-3.1.2-cp' + pythonversion + '-cp' + pythonversion
-    filename_rasterio = 'rasterio-1.1.5-cp' + pythonversion + '-cp' + pythonversion
-    if sys.version_info[1] < 8:
-        filename_gdal += 'm'
-        filename_rasterio += 'm'
-    filename_gdal += '-win_amd64.whl'
-    filename_rasterio += '-win_amd64.whl'
-    base_url_gdal = base_url + filename_gdal
-    base_url_rastetio = base_url + filename_rasterio
-
-    print('URL GDAL: ' + base_url_gdal)
-
-    # download gdal and rasterio
-    from os import path
-    import urllib.request
-
-    this_directory = path.abspath(path.dirname(__file__))
-    try:
-        slib = 'GDAL'
-        opener = urllib.request.build_opener()
-        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-        urllib.request.install_opener(opener)
-        urllib.request.urlretrieve(base_url_gdal, this_directory + '/' + filename_gdal)
-        slib = 'Rasterio'
-        urllib.request.urlretrieve(base_url_rastetio, this_directory + '/' + filename_rasterio)
-    except:
-        raise Exception("Cannot download " + slib + ".")
-
-    # install gdal and rasterio
-    subprocess.check_call([sys.executable, "-m", "pip", "install", filename_gdal])
-    subprocess.check_call([sys.executable, "-m", "pip", "install", filename_rasterio])
-
-    #delete wheel files
-    os.remove(this_directory + '/' + filename_gdal)
-    os.remove(this_directory + '/' + filename_rasterio)
-'''
-# check for other networks
-print('Downloading networks...')
-base_url = 'http://taglab.isti.cnr.it/models/'
-from os import path
-import urllib.request
-this_directory = path.abspath(path.dirname(__file__))
-net_file_names = ['dextr_corals.pth', 'deeplab-resnet.pth.tar', 'ritm_corals.pth',
-                  'pocillopora.net', 'porites.net', 'pocillopora_porite_montipora.net']
-
-for net_name in net_file_names:
-    filename_dextr_corals = 'dextr_corals.pth'
-    net_file = Path('models/' + net_name)
-    if not net_file.is_file(): #if file not exists
-        try:
-            url_dextr = base_url + net_name
-            print('Downloading ' + url_dextr + '...')
-            opener = urllib.request.build_opener()
-            opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-            urllib.request.install_opener(opener)
-            urllib.request.urlretrieve(url_dextr, 'models/' + net_name)
-        except:
-            raise Exception("Cannot download " + net_name + ".")
-    else:
-        print(net_name + ' already exists.')
-'''
