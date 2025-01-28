@@ -195,16 +195,8 @@ install_requires = [
     'albumentations',
     'shapely',
     'rectangle-packer',
-    'git+https://github.com/fabiocarrara/papyrus-matching.git'
+    'git+https://github.com/fabiocarrara/papyrus-matching.git',
 ]
 
 # installing all the packages
-subprocess.check_call([sys.executable, "-m", "pip", "install", *install_requires])
-
-# installing torch, gdal and rasterio
-
-# torch
-subprocess.check_call([sys.executable, "-m", "pip", "install", torch_package,
-                       '-f', 'https://download.pytorch.org/whl/torch_stable.html'])
-subprocess.check_call([sys.executable, "-m", "pip", "install", torchvision_package,
-                       '-f', 'https://download.pytorch.org/whl/torch_stable.html'])
+subprocess.check_call([sys.executable, "-m", "pip", "install", *install_requires, torch_package, torchvision_package, '-f', 'https://download.pytorch.org/whl/torch_stable.html'])
