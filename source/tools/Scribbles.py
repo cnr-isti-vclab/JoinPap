@@ -41,13 +41,13 @@ class Scribbles(QObject):
 
         cursor_size = self.current_size * self.scale_factor
 
-        pxmap = QPixmap(cursor_size, cursor_size)
+        pxmap = QPixmap(int(cursor_size), int(cursor_size))
         pxmap.fill(QColor("transparent"))
         painter = QPainter(pxmap)
         color = self.current_color
         brush = QBrush(QColor(color[0], color[1], color[2]))
         painter.setBrush(brush)
-        painter.drawEllipse(0, 0, cursor_size, cursor_size)
+        painter.drawEllipse(0, 0, int(cursor_size), int(cursor_size))
         painter.end()
         custom_cursor = QCursor(pxmap)
         QApplication.setOverrideCursor(custom_cursor)
