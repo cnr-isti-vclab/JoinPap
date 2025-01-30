@@ -145,7 +145,7 @@ class QtImageSetWidget(QWidget):
             n = len(self.mini_images)
             row = n / self.NCOLS
             col = n % self.NCOLS
-            self.grid_layout.addWidget(mini_image, row, col)
+            self.grid_layout.addWidget(mini_image, int(row), int(col))
 
             # Connect the click event to highlight the selected item
             mini_image.mousePressEvent = lambda event, img=mini_image: self.highlightItem(img, reset_fragment_selection=True)
