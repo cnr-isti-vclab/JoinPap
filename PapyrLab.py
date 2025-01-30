@@ -245,6 +245,10 @@ class PapyrLab(QMainWindow):
         self.rotateVerso.stateChanged[int].connect(self.viewerplus2.toggleRotate)
         self.rotateVerso.stateChanged[int].connect(self.saveGuiPreferences)
 
+        self.checkBoxViewSynchronization = QCheckBox("Synchronization")
+        self.checkBoxViewSynchronization.stateChanged[int].connect(self.toggleViewSynchronization)
+        self.checkBoxViewSynchronization.stateChanged[int].connect(self.saveGuiPreferences)
+
         self.labelZoom = QLabel("Zoom:")
         self.labelMouseLeft = QLabel("x:")
         self.labelMouseTop = QLabel("y:")
@@ -263,6 +267,7 @@ class PapyrLab(QMainWindow):
         layout_header.addWidget(self.checkBoxIds)
         layout_header.addWidget(self.checkBoxGrid)
         layout_header.addWidget(self.rotateVerso)
+        layout_header.addWidget(self.checkBoxViewSynchronization)
         layout_header.addStretch()
         layout_header.addWidget(self.labelZoom)
         layout_header.addWidget(self.labelZoomInfo)
@@ -370,8 +375,8 @@ class PapyrLab(QMainWindow):
         self.settings_widget.working_area_settings.workingAreaPenChanged[str, int].connect(self.viewerplus2.setWorkingAreaPen)
 
         # views synchronization
-        #self.viewerplus.viewHasChanged[float, float, float].connect(self.viewerplus2.setViewParameters)
-        #self.viewerplus2.viewHasChanged[float, float, float].connect(self.viewerplus.setViewParameters)
+        self.viewerplus.viewHasChanged[float, float, float].connect(self.viewerplus2.setViewParameters)
+        self.viewerplus2.viewHasChanged[float, float, float].connect(self.viewerplus.setViewParameters)
 
         self.viewerplus.customContextMenuRequested.connect(self.openContextMenu)
         self.viewerplus2.customContextMenuRequested.connect(self.openContextMenu)
@@ -410,6 +415,21 @@ class PapyrLab(QMainWindow):
 
         #self.viewerplus.autoZoom()
 
+    def toggleViewSynchronization(self):
+
+        if self.checkBoxViewSynchronization.isChecked():
+
+            try:
+                self.viewerplus.viewHasChanged[float, float, float].connect(self.viewerplus2.setViewParameters, type=Qt.UniqueConnection)
+                self.viewerplus2.viewHasChanged[float, float, float].connect(self.viewerplus.setViewParameters, type=Qt.UniqueConnection)
+            except:
+                pass
+        else:
+
+            self.viewerplus.viewHasChanged[float, float, float].disconnect()
+            self.viewerplus2.viewHasChanged[float, float, float].disconnect()
+
+
     def setGuiPreferences(self):
 
         settings = QSettings("VCLAB-AIMH", "PapyrLab")
@@ -421,6 +441,8 @@ class PapyrLab(QMainWindow):
         self.checkBoxIds.setChecked(value)
         value = settings.value("gui-checkbox-rotate", type=bool, defaultValue=False)
         self.rotateVerso.setChecked(value)
+        value = settings.value("gui-checkbox-synchro", type=bool, defaultValue=False)
+        self.checkBoxViewSynchronization.setChecked(value)
 
     @pyqtSlot()
     def saveGuiPreferences(self):
@@ -430,6 +452,7 @@ class PapyrLab(QMainWindow):
         settings.setValue("gui-checkbox-ids", self.checkBoxIds.isChecked())
         settings.setValue("gui-checkbox-grid", self.checkBoxGrid.isChecked())
         settings.setValue("gui-checkbox-rotate", self.rotateVerso.isChecked())
+        settings.setValue("gui-checkbox-synchro", self.checkBoxViewSynchronization.isChecked())
 
     #just to make the code less verbose
     def newAction(self, text, shortcut, callback):

@@ -282,8 +282,8 @@ class QtImageViewerPlus(QGraphicsView):
     def setViewParameters(self, posx, posy, zoomfactor):
 
         self.blockSignals(True)
-        self.horizontalScrollBar().setValue(posx)
-        self.verticalScrollBar().setValue(posy)
+        self.horizontalScrollBar().setValue(int(posx))
+        self.verticalScrollBar().setValue(int(posy))
         self.zoom_factor = zoomfactor
         self.updateViewer()
         self.blockSignals(False)
