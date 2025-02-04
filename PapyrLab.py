@@ -100,9 +100,10 @@ class PapyrLab(QMainWindow):
         self.settings_widget.loadSettings()
         default_width = self.settings_widget.default_wa_width
         default_height = self.settings_widget.default_wa_height
+        dpis = self.settings_widget.default_dpi
 
         # create a new empty project
-        self.project = Project(default_width, default_height)
+        self.project = Project(default_width, default_height, dpis)
 
         self.recentFileActs = []
         self.maxRecentFiles = 4
@@ -367,6 +368,7 @@ class PapyrLab(QMainWindow):
             self.viewerplus.setWorkingAreaBackgroundColor)
         self.settings_widget.working_area_settings.workingAreaPenChanged[str, int].connect(self.viewerplus.setWorkingAreaPen)
         self.settings_widget.working_area_settings.workingAreaSizeChanged[int, int].connect(self.setWorkingAreaFromSettingsWidget)
+        self.settings_widget.working_area_settings.dpisChanged[int].connect(self.setDpisFromSettingsWidget)
 
         self.settings_widget.drawing_settings.borderPenChanged[str, int].connect(self.viewerplus2.setBorderPen)
         self.settings_widget.drawing_settings.selectionPenChanged[str, int].connect(self.viewerplus2.setSelectionPen)
@@ -1083,7 +1085,8 @@ class PapyrLab(QMainWindow):
 
         default_width = self.settings_widget.default_wa_width
         default_height = self.settings_widget.default_wa_height
-        self.project = Project(default_width, default_height)
+        default_dpis = self.settings_widget.default_dpi
+        self.project = Project(default_width, default_height, default_dpis)
 
         self.activeviewer = None
         self.contextMenuPosition = None
@@ -1372,6 +1375,9 @@ class PapyrLab(QMainWindow):
         self.project.setWorkingArea([width, height])
         self._setWorkingArea()
 
+    def setDpisFromSettingsWidget(self, dpis):
+        self.project.setDPIs(dpis)
+
     @pyqtSlot()
     def openProject(self):
 
@@ -1522,6 +1528,7 @@ class PapyrLab(QMainWindow):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             self.project.load(self.papyrlab_dir, filename)
+            self.settings_widget.working_area_settings.setDefaultDPI(self.project.dpis)
             self.settings_widget.working_area_settings.setDefaultWAWidth(self.project.working_area[0])
             self.settings_widget.working_area_settings.setDefaultWAHeight(self.project.working_area[1])
         except Exception as e:

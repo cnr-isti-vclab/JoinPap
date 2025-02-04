@@ -26,10 +26,11 @@ class ProjectEncoder(json.JSONEncoder):
 
 class Project(object):
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, dpis):
 
         self.filename = None                   # file containing this project
         self.working_area = [width, height]    # top, left, width, height
+        self.dpis = dpis                       # dots per inch
         self.fragments = []                    # list of fragments
         self.groups = []                       # list of groups
         self.grid = None
@@ -49,6 +50,7 @@ class Project(object):
         self.filename = filename
 
         self.working_area = data["working_area"]
+        self.dpis = data["dpis"]
 
         # create all fragments
         self.fragments = []
@@ -132,8 +134,10 @@ class Project(object):
         self.removeGroup(group_to_remove)
 
     def setWorkingArea(self, working_area):
-
         self.working_area = working_area
+
+    def setDPIs(self, dpis):
+        self.dpis = dpis
 
     def fragmentClicked(self, x, y):
 

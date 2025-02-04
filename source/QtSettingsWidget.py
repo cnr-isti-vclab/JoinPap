@@ -31,6 +31,7 @@ class waSettingsWidget(QWidget):
     workingAreaBackgroundChanged = pyqtSignal(str)
     workingAreaPenChanged = pyqtSignal(str, int)
     workingAreaSizeChanged = pyqtSignal(int, int)
+    dpisChanged = pyqtSignal(int)
 
     def __init__(self, settings, taglab_dir, parent=None):
         super(waSettingsWidget, self).__init__(parent)
@@ -157,6 +158,10 @@ class waSettingsWidget(QWidget):
             new_width = width * new_dpi // old_dpi
             new_height = height * new_dpi // old_dpi
             self.workingAreaSizeChanged.emit(new_width, new_height)
+            self.dpisChanged.emit(new_dpi)
+
+            self.settings.setValue("default-wa-width", new_width)
+            self.settings.setValue("default-wa-height", new_height)
 
     def setDefaultWAWidth(self, width):
         self.edit_wa_width.blockSignals(True)
