@@ -223,3 +223,9 @@ def qimageToNumpyArray(qimg):
     arr[:, :, 3] = arrtemp[:, :, 3]
 
     return arr
+
+def centimetersToPixels(cm, dpi):
+    return int(cm * dpi / 2.54)
+
+def pixelsToCentimeters(px, dpi):
+    return px * 2.54 / dpi

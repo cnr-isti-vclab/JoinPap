@@ -20,9 +20,11 @@
 import os
 
 from PyQt5.QtCore import Qt, QSettings, pyqtSlot, pyqtSignal
-from PyQt5.QtGui import QValidator, QIntValidator
+from PyQt5.QtGui import QValidator, QIntValidator, QDoubleValidator
 from PyQt5.QtWidgets import QWidget, QColorDialog, QListWidget, QStackedWidget, QComboBox, QSizePolicy, QLineEdit, \
     QLabel, QSpinBox, QCheckBox, QPushButton, QGridLayout, QHBoxLayout, QVBoxLayout, QFileDialog
+
+from .utils import centimetersToPixels, pixelsToCentimeters
 
 class waSettingsWidget(QWidget):
 
@@ -37,15 +39,19 @@ class waSettingsWidget(QWidget):
 
         self.settings = settings
 
-        lbl_working_area = QLabel("Default size (px): ")
+        lbl_dpi = QLabel("Fragments DPI: ")
+        self.edit_dpi = QLineEdit()
+        self.edit_dpi.setFixedWidth(65)
+        self.edit_dpi.setValidator(QIntValidator(50, 32000))
 
+        lbl_working_area = QLabel("Default size (cm): ")
         self.edit_wa_width = QLineEdit()
         self.edit_wa_width.setFixedWidth(65)
-        self.edit_wa_width.setValidator(QIntValidator(0, 32000))
+        self.edit_wa_width.setValidator(QDoubleValidator(0.0, 32000.0, 2))
 
         self.edit_wa_height = QLineEdit()
         self.edit_wa_height.setFixedWidth(65)
-        self.edit_wa_height.setValidator(QIntValidator(0, 32000))
+        self.edit_wa_height.setValidator(QDoubleValidator(0.0, 32000.0, 2))
 
         layoutH1 = QHBoxLayout()
         layoutH1.addWidget(lbl_working_area)
@@ -54,6 +60,11 @@ class waSettingsWidget(QWidget):
         layoutH1.addSpacing(10)
         layoutH1.addWidget(self.edit_wa_height)
         layoutH1.addWidget(QLabel("height"))
+
+        layoutDPI = QHBoxLayout()
+        layoutDPI.addWidget(lbl_dpi)
+        layoutDPI.addWidget(self.edit_dpi)
+        layoutDPI.addStretch()
 
         self.workingarea_background_color = "255-255-255"
         self.workingarea_pen_color = "255-255-255"
@@ -102,6 +113,7 @@ class waSettingsWidget(QWidget):
         gridlayout.addLayout(layout_H4, 1, 1)
 
         layout = QVBoxLayout()
+        layout.addLayout(layoutDPI)
         layout.addLayout(layoutH1)
         layout.addLayout(gridlayout)
         self.setLayout(layout)
@@ -110,34 +122,63 @@ class waSettingsWidget(QWidget):
         self.btn_workingarea_border_color.clicked.connect(self.chooseWorkingAreaBorderColor)
         self.spinbox_workingarea_border_width.valueChanged.connect(self.workingAreaBorderWidthChanged)
 
+        self.edit_dpi.textChanged.connect(self.dpiChanged)
         self.edit_wa_width.textChanged.connect(self.widthChanged)
         self.edit_wa_height.textChanged.connect(self.heightChanged)
 
     @pyqtSlot(str)
     def widthChanged(self, txt):
         if self.edit_wa_width.validator().validate(txt, 0)[0] == QValidator.Acceptable:
-            self.settings.setValue("default-wa-width", int(txt))
+            cms = float(txt)
+            dpis = self.settings.value("default-dpi", type=int)
+            width = centimetersToPixels(cms, dpis)
+            self.settings.setValue("default-wa-width", width)
             height = self.settings.value("default-wa-height", type=int)
-            self.workingAreaSizeChanged.emit(int(txt), height)
+            self.workingAreaSizeChanged.emit(width, height)
 
     @pyqtSlot(str)
     def heightChanged(self, txt):
         if self.edit_wa_height.validator().validate(txt, 0)[0] == QValidator.Acceptable:
-            self.settings.setValue("default-wa-height", int(txt))
+            cms = float(txt)
+            dpis = self.settings.value("default-dpi", type=int)
+            height = centimetersToPixels(cms, dpis)
+            self.settings.setValue("default-wa-height", height)
             width = self.settings.value("default-wa-width", type=int)
-            self.workingAreaSizeChanged.emit(width, int(txt))
+            self.workingAreaSizeChanged.emit(width, height)
+
+    @pyqtSlot(str)
+    def dpiChanged(self, txt):
+        if self.edit_dpi.validator().validate(txt, 0)[0] == QValidator.Acceptable:
+            old_dpi = self.settings.value("default-dpi", type=int)
+            new_dpi = int(txt)
+            self.settings.setValue("default-dpi", new_dpi)
+            width = self.settings.value("default-wa-width", type=int)
+            height = self.settings.value("default-wa-height", type=int)
+            new_width = width * new_dpi // old_dpi
+            new_height = height * new_dpi // old_dpi
+            self.workingAreaSizeChanged.emit(new_width, new_height)
 
     def setDefaultWAWidth(self, width):
         self.edit_wa_width.blockSignals(True)
-        self.edit_wa_width.setText(str(width))
+        dpis = self.settings.value("default-dpi", type=int)
+        cm = pixelsToCentimeters(width, dpis)
+        self.edit_wa_width.setText(f"{cm:.2f}")
         self.edit_wa_width.blockSignals(False)
         self.settings.setValue("default-wa-width", width)
 
     def setDefaultWAHeight(self, height):
         self.edit_wa_height.blockSignals(True)
-        self.edit_wa_height.setText(str(height))
+        dpis = self.settings.value("default-dpi", type=int)
+        cm = pixelsToCentimeters(height, dpis)
+        self.edit_wa_height.setText(f"{cm:.2f}")
         self.edit_wa_height.blockSignals(False)
         self.settings.setValue("default-wa-height", height)
+
+    def setDefaultDPI(self, dpi):
+        self.edit_dpi.blockSignals(True)
+        self.edit_dpi.setText(str(dpi))
+        self.edit_dpi.blockSignals(False)
+        self.settings.setValue("default-dpi", dpi)
 
     @pyqtSlot()
     def chooseWorkingAreaBackgroundColor(self):
@@ -449,6 +490,7 @@ class QtSettingsWidget(QWidget):
 
     def loadSettings(self):
 
+        self.default_dpi = self.settings.value("default-dpi", defaultValue=300, type=int)
         self.default_wa_width = self.settings.value("default-wa-width", defaultValue=20000, type=int)
         self.default_wa_height = self.settings.value("default-wa-height", defaultValue=5000, type=int)
 
@@ -460,8 +502,10 @@ class QtSettingsWidget(QWidget):
         self.workingarea_pen_color = self.settings.value("workingarea-pen-color", defaultValue="0-255-0", type=str)
         self.workingarea_pen_width = self.settings.value("workingarea-pen-width", defaultValue=3, type=int)
 
+        self.working_area_settings.setDefaultDPI(self.default_dpi)
         self.working_area_settings.setDefaultWAWidth(self.default_wa_width)
         self.working_area_settings.setDefaultWAHeight(self.default_wa_height)
+
         self.working_area_settings.setWorkingAreaBackgroundColor(self.workingarea_background_color)
         self.working_area_settings.setWorkingAreaBorderColor(self.workingarea_pen_color)
         self.working_area_settings.setWorkingAreaBorderWidth(self.workingarea_pen_width)

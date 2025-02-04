@@ -23,7 +23,7 @@ from PyQt5.QtCore import Qt, QSize, pyqtSlot, pyqtSignal
 from PyQt5.QtGui import QImage, QImageReader, QPixmap, QIcon, qRgb, qRed, qGreen, qBlue
 from PyQt5.QtWidgets import QWidget, QMessageBox, QFileDialog, QComboBox, QSizePolicy, QLineEdit, QLabel, QPushButton, \
     QHBoxLayout, QVBoxLayout
-from source import utils
+from .utils import centimetersToPixels, pixelsToCentimeters
 from source.Grid import Grid
 
 
@@ -39,11 +39,11 @@ class QtGridWidget(QWidget):
         self.setMinimumHeight(100)
 
         self.viewerplus = viewerplus
-        pixelSize = 16.0   # TODO: get from somewhere else
-        self.pixels_to_meters = pixelSize / 1000.0
 
         self.posx_m = 0.0
         self.posy_m = 0.0
+
+        self.dpis = lambda: parent.settings_widget.settings.value("default-dpi", type=int)
 
         self.grid = Grid(viewerplus.project.working_area[0], viewerplus.project.working_area[1])
 
@@ -54,13 +54,13 @@ class QtGridWidget(QWidget):
 
             "number_cell_x": {"name": "Columns :", "value": "8", "place": "Number of vertical cells", "width": 200,  "action": None},
 
-            "cell_width": {"name": "Cell Width (m):", "value": "50.0", "place": "Width of each cell (m)", "width": 200, "action": None},
+            "cell_width": {"name": "Cell Width (cm):", "value": "10.0", "place": "Width of each cell (cm)", "width": 200, "action": None},
 
-            "margin_x": {"name": "Left Margin (m):", "value": "5.0", "place": "Margin in X direction (m)", "width": 200, "action": None},
+            "margin_x": {"name": "Left Margin (cm):", "value": "5.0", "place": "Margin in X direction (cm)", "width": 200, "action": None},
 
-            "margin_y": {"name": "Top Margin (m):", "value": "5.0", "place": "Margin in Y direction (m)", "width": 200, "action": None},
+            "margin_y": {"name": "Top Margin (cm):", "value": "5.0", "place": "Margin in Y direction (cm)", "width": 200, "action": None},
 
-            "intercolumn_space": {"name": "Inter-column space (m):", "value": "10.0", "place": "Space between columns (m)", "width": 200, "action": None},
+            "intercolumn_space": {"name": "Inter-column space (cm):", "value": "5.0", "place": "Space between columns (cm)", "width": 200, "action": None},
         }
         self.data = {}
 
@@ -132,21 +132,15 @@ class QtGridWidget(QWidget):
         self.fields["margin_y"]["edit"].editingFinished.connect(self.setGrid)
         self.fields["intercolumn_space"]["edit"].editingFinished.connect(self.setGrid)
 
-    def pixelsToMeters(self, px):
-        return round(px * self.pixels_to_meters, 3)
-
-    def metersToPixels(self, m):
-        return round(m / self.pixels_to_meters)
-
     @pyqtSlot()
     def setGrid(self):
         for key, field in self.fields.items():
             self.data[key] = field["edit"].text()
 
-        cell_width = self.metersToPixels(float(self.data["cell_width"]))
-        margin_x = self.metersToPixels(float(self.data["margin_x"]))
-        margin_y = self.metersToPixels(float(self.data["margin_y"]))
-        intercolumn_space = self.metersToPixels(float(self.data["intercolumn_space"]))
+        cell_width = centimetersToPixels(float(self.data["cell_width"]), self.dpis())
+        margin_x = centimetersToPixels(float(self.data["margin_x"]), self.dpis())
+        margin_y = centimetersToPixels(float(self.data["margin_y"]), self.dpis())
+        intercolumn_space = centimetersToPixels(float(self.data["intercolumn_space"]), self.dpis())
 
         self.grid.undrawGrid()
         self.grid.setGrid(cell_width, int(self.data["number_cell_x"]), int(margin_x), int(margin_y), int(intercolumn_space))
