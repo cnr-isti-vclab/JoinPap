@@ -149,7 +149,7 @@ class QtImageViewerPlus(QGraphicsView):
 
         # DRAWING SETTINGS
         self.border_enabled = True
-        self.ids_enable = True
+        self.ids_enabled = True
         self.back_vis = False
 
         self.show_grid = False
@@ -533,6 +533,11 @@ class QtImageViewerPlus(QGraphicsView):
                 fragment.id_item.setOpacity(0.7)
 
             self.scene.addItem(fragment.id_item)
+
+        if self.ids_enabled:
+            self.enableIds()
+        else:
+            self.disableIds()
 
     def undrawFragment(self, fragment):
 

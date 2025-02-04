@@ -495,7 +495,7 @@ class QtSettingsWidget(QWidget):
 
     def loadSettings(self):
 
-        self.default_dpi = self.settings.value("default-dpi", defaultValue=300, type=int)
+        self.default_dpi = self.settings.value("default-dpi", defaultValue=600, type=int)
         self.default_wa_width = self.settings.value("default-wa-width", defaultValue=20000, type=int)
         self.default_wa_height = self.settings.value("default-wa-height", defaultValue=5000, type=int)
 
