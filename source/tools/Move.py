@@ -11,21 +11,6 @@ class Move(Tool):
         self.last_point_clicked = []
 
     def leftPressed(self, x, y, mods):
-
-        selected_fragment = self.viewerplus.project.fragmentClicked(x, y)
-        if selected_fragment is None:
-            return
-        
-        self.viewerplus.parent.image_set_widget.scrollToFragment(selected_fragment)
-
-        self.viewerplus.resetSelection()
-        if selected_fragment.group_id == -1:
-            self.viewerplus.addToSelectedList(selected_fragment)
-        else:
-            fragments = self.viewerplus.project.getFragmentsOfAGroup(selected_fragment)
-            for fragment in fragments:
-                self.viewerplus.addToSelectedList(fragment)
-
         self.initial_point_clicked = [x, y]
         self.last_point_clicked = [x, y]
 
