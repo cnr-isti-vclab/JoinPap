@@ -280,6 +280,7 @@ class PapyrLab(QMainWindow):
 
         layout_viewers = QHBoxLayout()
         layout_viewers.addWidget(self.viewerplus)
+        layout_viewers.addSpacing(10)
         layout_viewers.addWidget(self.viewerplus2)
         layout_viewers.setStretchFactor(self.viewerplus, 1)
         layout_viewers.setStretchFactor(self.viewerplus2, 1)
