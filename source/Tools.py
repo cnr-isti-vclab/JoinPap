@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt
 from source.tools.PickPoints import PickPoints
 from source.tools.EditPoints import EditPoints
 from source.tools.Scribbles import Scribbles
-from source.tools.DrawLine import DrawLine
+from source.tools.Ruler import Ruler
 
 from source.tools.Move import Move
 
@@ -13,10 +13,6 @@ class Tools(object):
         self.tool = "PAN"
         self.scene = viewerplus.scene
         self.viewerplus = viewerplus
-
-        self.pick_points = PickPoints(self.scene)
-        self.edit_points = EditPoints(self.scene)
-        self.scribbles = Scribbles(self.scene)
 
         self.CROSS_LINE_WIDTH = 2
         self.extreme_pick_style = {'width': self.CROSS_LINE_WIDTH, 'color': Qt.red,  'size': 6}
@@ -29,7 +25,7 @@ class Tools(object):
         # create all the tools
         self.tools = {
             "MOVE": Move(self.viewerplus),
-            "DRAWLINE": DrawLine(self.viewerplus),
+            "RULER": Ruler(self.viewerplus),
         }
 
     def setTool(self, tool):
@@ -38,9 +34,8 @@ class Tools(object):
 
     def resetTools(self):
 
-        self.pick_points.reset()
-        self.edit_points.reset()
-        self.scribbles.reset()
+        for tool in self.tools.values():
+            tool.reset()
 
         self.scene.invalidate(self.scene.sceneRect())
 

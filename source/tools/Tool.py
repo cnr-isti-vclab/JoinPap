@@ -44,3 +44,6 @@ class Tool(QObject):
 
     def apply(self):
         pass
+
+    def reset(self):
+        pass

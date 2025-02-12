@@ -138,7 +138,7 @@ class PapyrLab(QMainWindow):
         self.btnFreehand           = self.newButton("cross.png",  "Freehand border",       flatbuttonstyle1, self.freehand) # was pencil.png
         self.btnEditBorder         = self.newButton("cross.png",    "Edit border",           flatbuttonstyle1, self.editBorder) # was edit.png
         self.btnEvaluation         = self.newButton("auto.png",    "Evaluate/suggest",      flatbuttonstyle2, self.evaluation)
-        self.btnDrawLine           = self.newButton("edit.png",    "Draw line",             flatbuttonstyle1, self.drawLine)
+        self.btnRuler           = self.newButton("ruler.png",    "Ruler",             flatbuttonstyle1, self.ruler)
 
         # Split Screen operation removed from the toolbar
         self.pxmapSeparator = QPixmap("icons/separator.png")
@@ -159,7 +159,7 @@ class PapyrLab(QMainWindow):
         # layout_tools.addWidget(self.btnFreehand)
         # layout_tools.addWidget(self.btnEditBorder)
         layout_tools.addWidget(self.btnEvaluation)
-        layout_tools.addWidget(self.btnDrawLine)
+        layout_tools.addWidget(self.btnRuler)
         layout_tools.addSpacing(3)
         layout_tools.addWidget(self.labelSeparator)
         layout_tools.addSpacing(3)
@@ -1100,6 +1100,7 @@ class PapyrLab(QMainWindow):
 
         self.btnPan.setChecked(False)
         self.btnMove.setChecked(False)
+        self.btnRuler.setChecked(False)
         self.btnEditBorder.setChecked(False)
         self.btnFreehand.setChecked(False)
         self.btnCreateGrid.setChecked(False)
@@ -1112,7 +1113,7 @@ class PapyrLab(QMainWindow):
             "MOVE"         : ["Move"       , self.btnMove],
             "EDITBORDER"   : ["Edit Border"  , self.btnEditBorder],
             "FREEHAND"     : ["Freehand"     , self.btnFreehand],
-            "DRAWLINE"     : ["Draw Line"    , self.btnDrawLine],
+            "RULER"     : ["Ruler"    , self.btnRuler],
         }
         newtool = tools[tool]
         self.resetToolbar()
@@ -1135,11 +1136,11 @@ class PapyrLab(QMainWindow):
         self.setTool("MOVE")
 
     @pyqtSlot()
-    def drawLine(self):
+    def ruler(self):
         """
-        Activate the "draw line" tool.
+        Activate the "ruler" tool.
         """
-        self.setTool("DRAWLINE")
+        self.setTool("RULER")
 
     @pyqtSlot()
     def rotate(self):
