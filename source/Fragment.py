@@ -82,6 +82,7 @@ class Fragment(object):
 
             filename_back = filename[:-4] + "_back" + filename[-4:]
             self.qimage_back = QImage(filename_back)
+            self.qimage_back = self.qimage_back.mirrored(True, False)
             self.qimage_back = self.qimage_back.convertToFormat(QImage.Format_ARGB32)
 
             # BBOX FORMAT: top, left, width, height

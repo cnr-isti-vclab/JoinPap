@@ -288,14 +288,28 @@ class QtImageViewerPlus(QGraphicsView):
         self.updateViewer()
         self.blockSignals(False)
 
+    def reapplyTransforms(self):
+        self.resetTransform()
+        scale_x_mul = -1 if self.back_vis else 1
+        self.scale(scale_x_mul * self.zoom_factor, self.zoom_factor)
+        if self.rotated:
+            self.rotate(180)
+
+        if self.project is not None and self.project.fragments is not None:
+            for fragment in self.project.fragments:
+                if self.back_vis and fragment.id_back_item is not None:
+                    fragment.id_back_item.resetTransform()
+                    transf = QTransform()
+                    transf.scale(-1, 1)  # Flip along the x-axis
+                    if self.rotated:
+                        transf.rotate(180)
+                    fragment.id_back_item.setTransform(transf)
+
     def updateViewer(self):
         """
         Show current zoom (if showing entire image, apply current aspect ratio mode).
         """
-        self.resetTransform()
-        self.scale(self.zoom_factor, self.zoom_factor)
-        if self.rotated:
-            self.rotate(180)
+        self.reapplyTransforms()
         self.invalidateScene()
 
     def drawWorkingArea(self):
@@ -422,11 +436,7 @@ class QtImageViewerPlus(QGraphicsView):
     def toggleRotate(self, check):
         self.rotated = check
         # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
-        if self.project:
-            for fragment in self.project.fragments:
-                if fragment.id_back_item is not None:
-                    fragment.id_back_item.setRotation(-180 if check else 0)
-        self.rotate(180)
+        self.reapplyTransforms()
 
     def enableIds(self):
 
@@ -476,18 +486,15 @@ class QtImageViewerPlus(QGraphicsView):
 
             fragment.qpixmap_back_item = self.scene.addPixmap(fragment.qpixmap_back)
             fragment.qpixmap_back_item.setZValue(self.Z_VALUE_FRAGMENTS)
-            W = self.project.working_area[0]
-            fragment.qpixmap_back_item.setPos(W - fragment.bbox[1] - fragment.bbox[2], fragment.bbox[0])
+            fragment.qpixmap_back_item.setPos(fragment.bbox[1], fragment.bbox[0])
 
             if fragment in self.selected_fragments:
                 self.addFragmentBorder(fragment)
 
             font_size = 70
             fragment.id_back_item = TextItem(str(os.path.basename(fragment.filename)), QFont("Roboto", font_size, QFont.Bold))
-            fragment.id_back_item.setPos(W - fragment.center[0], fragment.center[1])
+            fragment.id_back_item.setPos(fragment.center[0], fragment.center[1])
             # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
-            if self.rotated:
-                fragment.id_back_item.setRotation(-180)
             fragment.id_back_item.setZValue(self.Z_VALUE_IDS)
             fragment.id_back_item.setBrush(Qt.white)
 
@@ -497,6 +504,7 @@ class QtImageViewerPlus(QGraphicsView):
                 fragment.id_back_item.setOpacity(0.7)
 
             self.scene.addItem(fragment.id_back_item)
+            self.reapplyTransforms()
 
         else:
             # if it has just been created remove the current graphics item in order to set it again
@@ -644,7 +652,7 @@ class QtImageViewerPlus(QGraphicsView):
                         self.addToSelectedList(selected_fragment)
                         self.updateInfoPanel.emit(selected_fragment)
 
-            self.parent.image_set_widget.scrollToFragment(selected_fragment)
+            self.parent.image_set_widget.scrollToFragment(selected_fragment,verso=self.back_vis)
             self.newSelection.emit()
         else:
             self.resetSelection()
@@ -801,16 +809,7 @@ class QtImageViewerPlus(QGraphicsView):
             if self.zoom_factor > self.ZOOM_FACTOR_MAX:
                 self.zoom_factor = self.ZOOM_FACTOR_MAX
 
-            self.resetTransform()
-
-            # Create a new transformation matrix for zooming
-            zoom_transform = QTransform()
-            zoom_transform.scale(self.zoom_factor, self.zoom_factor)
-            rotate_transform = QTransform()
-            rotate_transform.rotate(180)
-
-            new_transform = rotate_transform * zoom_transform if self.rotated else zoom_transform
-            self.setTransform(new_transform)
+            self.reapplyTransforms()
 
             delta = self.mapToScene(view_pos) - self.mapToScene(self.viewport().rect().center())
             self.centerOn(scene_pos - delta)
@@ -889,8 +888,7 @@ class QtImageViewerPlus(QGraphicsView):
             if fragment.qpixmap_contour_back is not None and self.border_enabled:
                 fragment.qpixmap_contour_back_item = self.scene.addPixmap(fragment.qpixmap_contour_back)
                 fragment.qpixmap_contour_back_item.setZValue(self.Z_VALUE_BORDERS)
-                W = self.project.working_area[0]
-                fragment.qpixmap_contour_back_item.setPos(W - fragment.bbox[1] - fragment.bbox[2], fragment.bbox[0])
+                fragment.qpixmap_contour_back_item.setPos(fragment.bbox[1], fragment.bbox[0])
         else:
             if fragment.qpixmap_contour is not None and self.border_enabled:
                 fragment.qpixmap_contour_item = self.scene.addPixmap(fragment.qpixmap_contour)

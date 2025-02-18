@@ -117,6 +117,7 @@ class QtImageSetWidget(QWidget):
     def setupImages(self, fragments):
 
         self.mini_images = []
+        self.mini_images_back = [] # TODO: add verso mini images
 
         self.grid_widget = QWidget()
         self.grid_layout = QGridLayout()
@@ -179,8 +180,9 @@ class QtImageSetWidget(QWidget):
         for group_id in group_ids:
             self.combo_group.addItem(str(group_id))
 
-    def scrollToFragment(self, fragment):
-        for mini_image in self.mini_images:
+    def scrollToFragment(self, fragment, verso=False):
+        mini_images = self.mini_images_back if verso else self.mini_images
+        for mini_image in mini_images:
             if mini_image.ref == fragment:
                 self.scroll_area.ensureWidgetVisible(mini_image)
                 self.highlightItem(mini_image, center=False)
