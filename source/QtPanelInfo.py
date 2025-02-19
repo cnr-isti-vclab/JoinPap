@@ -2,6 +2,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGridLayout, QWidget, QTabWidget, QSpinBox, QLineEdit, QDoubleSpinBox, \
     QCheckBox, QComboBox, QTableWidget, QTableWidgetItem, QGroupBox, QLabel, QHBoxLayout, QVBoxLayout, QTextEdit
 
+from PyQt5.QtCore import pyqtSlot
+
 import numpy as np
 
 class QtPanelInfo(QTabWidget):
@@ -9,6 +11,7 @@ class QtPanelInfo(QTabWidget):
     def __init__(self, parent=None):
         super(QtPanelInfo, self).__init__(parent)
 
+        self.fragment = None
         self.fields = {}
         self.attributes = []
 
@@ -30,15 +33,22 @@ class QtPanelInfo(QTabWidget):
 
         layout = QGridLayout()
 
-        fields = { 'id': 'Id:', 'group_id': 'Group:' }
+        fields = { 'id': 'Id:', 'group_id': 'Group:', 'name': 'Name:', 'note': 'Note:' }
 
         self.fields = {}
         row = 0
         col = 0
         for field in fields:
+
             label = QLabel(fields[field])
             layout.addWidget(label, row, col)
-            value = self.fields[field] = QLabel('')
+            if row == 1:
+                # the value of this field is editable
+                value = self.fields[field] = QLineEdit('')
+                value.textChanged.connect(self.updateFragmentInfo)
+            else:
+                value = self.fields[field] = QLabel('')
+
             layout.addWidget(value, row, col+1)
             col += 2
             if col == 4:
@@ -50,15 +60,20 @@ class QtPanelInfo(QTabWidget):
         widget.setLayout(layout)
         return widget
 
-    def updateNotes(self):
-        if self.fragment is None:
-            return
-        self.fragment.note = self.fields['note'].document().toPlainText()
+    @pyqtSlot()
+    def updateFragmentInfo(self):
+
+        if self.fragment:
+            self.fragment.name = self.fields['name'].text()
+            self.fragment.note = self.fields['note'].text()
 
     def clear(self):
+
         self.blob = None
         for field in self.fields:
+            self.fields[field].blockSignals(True)
             self.fields[field].setText("")
+            self.fields[field].blockSignals(False)
 
     def update(self, fragment):
         self.clear()
@@ -66,8 +81,12 @@ class QtPanelInfo(QTabWidget):
         self.fragment = fragment
 
         for field in self.fields:
+            self.fields[field].blockSignals(True)
+
             value = getattr(fragment, field)
             if value == -1:
                 self.fields[field].setText("")
             else:
                 self.fields[field].setText(str(value))
+
+            self.fields[field].blockSignals(False)

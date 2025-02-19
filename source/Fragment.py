@@ -52,6 +52,7 @@ class Fragment(object):
         self.filename = filename
         self.bbox = [offset_y, offset_x, 0, 0]
         self.group_id = -1
+        self.name = ""
         self.note = ""
         self.center = np.array((offset_x, offset_y))
 
