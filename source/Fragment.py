@@ -22,9 +22,35 @@ import os
 import skimage.morphology
 
 from skimage import measure
-from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtGui import QImage, QPixmap, QTransform, QFont, QBrush, QColor
+from PyQt5.QtWidgets import QGraphicsSimpleTextItem
 
 from source.utils import qimageToNumpyArray, maskToQImage, maskToQImageWTrasparency
+
+class TextItem(QGraphicsSimpleTextItem):
+    def __init__(self, text, font, background_color=QColor(80, 80, 80)):
+        QGraphicsSimpleTextItem.__init__(self)
+        self.setText(text)
+        self.setFont(font)
+        self.background_color = background_color
+        # self.setTransformOriginPoint(self.boundingRect().center())
+
+    def paint(self, painter, option, widget):
+        painter.save()
+        painter.translate(self.boundingRect().topLeft())
+        
+        # Draw the background rectangle
+        painter.setBrush(QBrush(self.background_color))
+        painter.setPen(Qt.NoPen)
+        painter.drawRect(super().boundingRect())
+        
+        super().paint(painter, option, widget)
+        painter.restore()
+
+    def boundingRect(self):
+        b = super().boundingRect()
+        return QRectF(b.x()-b.width()/2.0, b.y()-b.height()/2.0, b.width(), b.height())
 
 """
 compute the bounding box of a set of points in format [[x0, y0], [x1, y1]... ]
@@ -193,6 +219,163 @@ class Fragment(object):
         pxmap = QPixmap.fromImage(qimg)
 
         return pxmap
+    
+    def drawBorders(self, scene, back=False, enabled=True, zvalue_borders=0):
+        if back is True:
+            if self.qpixmap_contour_back is not None and enabled:
+                self.qpixmap_contour_back_item = scene.addPixmap(self.qpixmap_contour_back)
+                self.qpixmap_contour_back_item.setZValue(zvalue_borders)
+                self.qpixmap_contour_back_item.setPos(self.bbox[1], self.bbox[0])
+        else:
+            if self.qpixmap_contour is not None and enabled:
+                self.qpixmap_contour_item = scene.addPixmap(self.qpixmap_contour)
+                self.qpixmap_contour_item.setZValue(zvalue_borders)
+                self.qpixmap_contour_item.setPos(self.bbox[1], self.bbox[0])
+
+    def undrawBorders(self, scene, back=False):
+        if back is True:
+            if self.qpixmap_contour_back_item is not None:
+                scene.removeItem(self.qpixmap_contour_back_item)
+                del self.qpixmap_contour_back_item
+                self.qpixmap_contour_back_item = None
+        else:
+            if self.qpixmap_contour_item is not None:
+                scene.removeItem(self.qpixmap_contour_item)
+                del self.qpixmap_contour_item
+                self.qpixmap_contour_item = None
+
+    def enableIds(self, enabled):
+        if self.id_item is not None:
+            self.id_item.setVisible(enabled)
+        if self.id_back_item is not None:
+            self.id_back_item.setVisible(enabled)
+    
+    def reapplyTransformsOnVerso(self, rotated=False):
+        if self.id_back_item is not None:
+            self.id_back_item.resetTransform()
+            transf = QTransform()
+            transf.scale(-1, 1)  # Flip along the x-axis
+            if rotated:
+                transf.rotate(180)
+            self.id_back_item.setTransform(transf)
+
+    def drawFragment(self, scene, back=False, selected=False, zvalue_fragments=0, zvalue_ids=0, zvalue_borders=0, border_enabled=True):
+        if back:
+            # if it has just been created remove the current graphics item in order to set it again
+            if self.qpixmap_back_item is not None:
+                scene.removeItem(self.qpixmap_back_item)
+                scene.removeItem(self.id_back_item)
+                del self.qpixmap_back_item
+                del self.id_back_item
+                self.qpixmap_back_item = None
+                self.id_back_item = None
+
+                self.undrawBorders(scene, back=back)
+                self.prepareForDrawing()
+
+            self.qpixmap_back_item = scene.addPixmap(self.qpixmap_back)
+            self.qpixmap_back_item.setZValue(zvalue_fragments)
+            self.qpixmap_back_item.setPos(self.bbox[1], self.bbox[0])
+
+            if selected:
+                self.drawBorders(scene, back=True, enabled=border_enabled, zvalue_borders=zvalue_borders)
+
+            font_size = 70
+            self.id_back_item = TextItem(str(os.path.basename(self.filename)), QFont("Roboto", font_size, QFont.Bold))
+            self.id_back_item.setPos(self.center[0], self.center[1])
+            # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
+            self.id_back_item.setZValue(zvalue_ids)
+            self.id_back_item.setBrush(Qt.white)
+
+            if selected:
+                self.id_back_item.setOpacity(1.0)
+            else:
+                self.id_back_item.setOpacity(0.7)
+
+            scene.addItem(self.id_back_item)
+
+        else:
+            # if it has just been created remove the current graphics item in order to set it again
+            if self.qpixmap_item is not None:
+                scene.removeItem(self.qpixmap_item)
+                scene.removeItem(self.id_item)
+                del self.qpixmap_item
+                del self.id_item
+                self.qpixmap_item = None
+                self.id_item = None
+
+                self.undrawBorders(scene, back=back)
+                self.prepareForDrawing()
+
+            self.qpixmap_item = scene.addPixmap(self.qpixmap)
+            self.qpixmap_item.setZValue(zvalue_fragments)
+            self.qpixmap_item.setPos(self.bbox[1], self.bbox[0])
+
+            if selected:
+                self.drawBorders(scene, enabled=border_enabled, zvalue_borders=zvalue_borders)
+
+            font_size = 70
+            self.id_item = TextItem(str(os.path.basename(self.filename)), QFont("Roboto", font_size, QFont.Bold))
+            # bbox = fragment.bbox
+            # fragment.id_item.setTransformOriginPoint(QPointF(fragment))
+            self.id_item.setPos(self.center[0], self.center[1])
+            self.id_item.setZValue(zvalue_ids)
+            self.id_item.setBrush(Qt.white)
+
+            if selected:
+                self.id_item.setOpacity(1.0)
+            else:
+                self.id_item.setOpacity(0.7)
+
+            scene.addItem(self.id_item)
+
+    def undrawFragment(self, scene):
+        scene.removeItem(self.qpixmap_back_item)
+
+        if self.qpixmap_back_item is not None:
+            scene.removeItem(self.qpixmap_back_item)
+            del self.qpixmap_back_item
+            self.qpixmap_back_item = None
+
+        if self.qpixmap_contour_back_item is not None:
+            scene.removeItem(self.qpixmap_contour_back_item)
+            del self.qpixmap_contour_back_item
+            self.qpixmap_contour_back_item = None
+
+        if self.id_back_item is not None:
+            scene.removeItem(self.id_back_item)
+            del self.id_back_item
+            self.id_back_item = None
+
+        if self.qpixmap_item is not None:
+            scene.removeItem(self.qpixmap_item)
+            del self.qpixmap_item
+            self.qpixmap_item = None
+
+        if self.qpixmap_contour_item is not None:
+            scene.removeItem(self.qpixmap_contour_item)
+            del self.qpixmap_contour_item
+            self.qpixmap_contour_item = None
+
+        if self.id_item is not None:
+            scene.removeItem(self.id_item)
+            del self.id_item
+            self.id_item = None
+
+        scene.invalidate()
+
+    def select(self, scene, back=False, border_enabled=True, zvalue_borders=0, zvalue_ids=0):
+        self.undrawBorders(scene, back=back)
+        self.prepareForDrawing()
+        self.drawBorders(scene, back=back, enabled=border_enabled, zvalue_borders=zvalue_borders)
+
+        self.id_item.setZValue(zvalue_ids)
+        self.id_item.setOpacity(1.0)
+
+    def deselect(self, scene, back=False, zvalue_ids=0):
+        self.undrawBorders(scene, back=back)
+        self.id_item.setZValue(zvalue_ids)
+        self.id_item.setOpacity(0.7)
 
     def fromDict(self, dict):
         """

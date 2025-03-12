@@ -22,39 +22,13 @@
     The viewer has also drawing capabilities (differently from QTimage viewer).
 """
 
-import os.path
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QFileInfo, QDir, pyqtSlot, pyqtSignal, QT_VERSION_STR
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QPainterPath, QPen, QColor, QFont, QBrush, QTransform
-from PyQt5.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QFileDialog, QGraphicsItem, QGraphicsSimpleTextItem, QPlainTextEdit,QSizePolicy
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, pyqtSlot, pyqtSignal
+from PyQt5.QtGui import QPen, QColor, QBrush
+from PyQt5.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QPlainTextEdit,QSizePolicy
 
 from source.Fragment import Fragment
 from source.Project import Project
 from source.Tools import Tools
-
-class TextItem(QGraphicsSimpleTextItem):
-    def __init__(self, text, font, background_color=QColor(80, 80, 80)):
-        QGraphicsSimpleTextItem.__init__(self)
-        self.setText(text)
-        self.setFont(font)
-        self.background_color = background_color
-        # self.setTransformOriginPoint(self.boundingRect().center())
-
-    def paint(self, painter, option, widget):
-        painter.save()
-        painter.translate(self.boundingRect().topLeft())
-        
-        # Draw the background rectangle
-        painter.setBrush(QBrush(self.background_color))
-        painter.setPen(Qt.NoPen)
-        painter.drawRect(super().boundingRect())
-        
-        super().paint(painter, option, widget)
-        painter.restore()
-
-    def boundingRect(self):
-        b = super().boundingRect()
-        return QRectF(b.x()-b.width()/2.0, b.y()-b.height()/2.0, b.width(), b.height())
-
 
 class NoteWidget(QPlainTextEdit):
 
@@ -278,15 +252,9 @@ class QtImageViewerPlus(QGraphicsView):
         if self.rotated:
             self.rotate(180)
 
-        if self.project is not None and self.project.fragments is not None:
+        if self.project is not None and self.project.fragments is not None and self.back_vis:
             for fragment in self.project.fragments:
-                if self.back_vis and fragment.id_back_item is not None:
-                    fragment.id_back_item.resetTransform()
-                    transf = QTransform()
-                    transf.scale(-1, 1)  # Flip along the x-axis
-                    if self.rotated:
-                        transf.rotate(180)
-                    fragment.id_back_item.setTransform(transf)
+                fragment.reapplyTransformsOnVerso(rotated=self.rotated)
 
         for tool in self.tools.tools.values():
             tool.handleTransform()
@@ -337,37 +305,16 @@ class QtImageViewerPlus(QGraphicsView):
         self.zoomEnabled = False
 
     def enableBorders(self):
-
         if self.project is not None:
             for fragment in self.project.fragments:
-                if self.back_vis is True:
-                    if fragment.qpixmap_contour_back is None:
-                        self.fragment.prepareForDrawing()
-                        fragment.qpixmap_contour_back_item = self.scene.addPixmap(fragment.qpixmap_contour)
-                        fragment.qpixmap_contour_back_item.setZValue(self.Z_VALUE_BORDERS)
-                else:
-                    if fragment.qpixmap_contour is None:
-                        self.fragment.prepareForDrawing()
-                        fragment.qpixmap_contour_item = self.scene.addPixmap(fragment.qpixmap_contour)
-                        fragment.qpixmap_contour_item.setZValue(self.Z_VALUE_BORDERS)
+                fragment.drawBorders(self.scene, back=self.back_vis, enabled=self.border_enabled, zvalue_borders=self.Z_VALUE_BORDERS)
 
         self.border_enabled = True
 
     def disableBorders(self):
-
         if self.project is not None:
             for fragment in self.project.fragments:
-                if self.back_vis is True:
-                    if fragment.qpixmap_contour_back is not None:
-                        self.scene.removeItem(fragment.qpixmap_contour_back_item)
-                        del fragment.qpixmap_contour_back_item
-                        fragment.qpixmap_contour_back_item = None
-
-                else:
-                    if fragment.qpixmap_contour_item is not None:
-                        self.scene.removeItem(fragment.qpixmap_contour_item)
-                        del fragment.qpixmap_contour_item
-                        fragment.qpixmap_contour_item = None
+                fragment.undrawBorders(self.scene, back=self.back_vis)
 
         self.border_enabled = False
 
@@ -425,25 +372,15 @@ class QtImageViewerPlus(QGraphicsView):
         self.reapplyTransforms()
 
     def enableIds(self):
-
         if self.project is not None:
             for fragment in self.project.fragments:
-                if fragment.id_item is not None:
-                    fragment.id_item.setVisible(True)
-                if fragment.id_back_item is not None:
-                    fragment.id_back_item.setVisible(True)
-
+                fragment.enableIds(True)
         self.ids_enabled = True
 
     def disableIds(self):
-
         if self.project is not None:
             for fragment in self.project.fragments:
-                if fragment.id_item is not None:
-                    fragment.id_item.setVisible(False)
-                if fragment.id_back_item is not None:
-                    fragment.id_back_item.setVisible(False)
-
+                fragment.enableIds(False)
         self.ids_enabled = False
 
     @pyqtSlot(int)
@@ -455,119 +392,19 @@ class QtImageViewerPlus(QGraphicsView):
             self.enableIds()
 
     def drawFragment(self, fragment):
-
-        if self.back_vis is True:
-            # if it has just been created remove the current graphics item in order to set it again
-            if fragment.qpixmap_back_item is not None:
-                self.scene.removeItem(fragment.qpixmap_back_item)
-                self.scene.removeItem(fragment.id_back_item)
-                del fragment.qpixmap_back_item
-                del fragment.id_back_item
-                fragment.qpixmap_back_item = None
-                fragment.id_back_item = None
-
-                self.removeFragmentBorder(fragment)
-
-                fragment.prepareForDrawing()
-
-            fragment.qpixmap_back_item = self.scene.addPixmap(fragment.qpixmap_back)
-            fragment.qpixmap_back_item.setZValue(self.Z_VALUE_FRAGMENTS)
-            fragment.qpixmap_back_item.setPos(fragment.bbox[1], fragment.bbox[0])
-
-            if fragment in self.selected_fragments:
-                self.addFragmentBorder(fragment)
-
-            font_size = 70
-            fragment.id_back_item = TextItem(str(os.path.basename(fragment.filename)), QFont("Roboto", font_size, QFont.Bold))
-            fragment.id_back_item.setPos(fragment.center[0], fragment.center[1])
-            # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
-            fragment.id_back_item.setZValue(self.Z_VALUE_IDS)
-            fragment.id_back_item.setBrush(Qt.white)
-
-            if fragment in self.selected_fragments:
-                fragment.id_back_item.setOpacity(1.0)
-            else:
-                fragment.id_back_item.setOpacity(0.7)
-
-            self.scene.addItem(fragment.id_back_item)
-            self.reapplyTransforms()
-
-        else:
-            # if it has just been created remove the current graphics item in order to set it again
-            if fragment.qpixmap_item is not None:
-                self.scene.removeItem(fragment.qpixmap_item)
-                self.scene.removeItem(fragment.id_item)
-                del fragment.qpixmap_item
-                del fragment.id_item
-                fragment.qpixmap_item = None
-                fragment.id_item = None
-
-                self.removeFragmentBorder(fragment)
-
-                fragment.prepareForDrawing()
-
-            fragment.qpixmap_item = self.scene.addPixmap(fragment.qpixmap)
-            fragment.qpixmap_item.setZValue(self.Z_VALUE_FRAGMENTS)
-            fragment.qpixmap_item.setPos(fragment.bbox[1], fragment.bbox[0])
-
-            if fragment in self.selected_fragments:
-                self.addFragmentBorder(fragment)
-
-            font_size = 70
-            fragment.id_item = TextItem(str(os.path.basename(fragment.filename)), QFont("Roboto", font_size, QFont.Bold))
-            # bbox = fragment.bbox
-            # fragment.id_item.setTransformOriginPoint(QPointF(fragment))
-            fragment.id_item.setPos(fragment.center[0], fragment.center[1])
-            fragment.id_item.setZValue(self.Z_VALUE_IDS)
-            fragment.id_item.setBrush(Qt.white)
-
-            if fragment in self.selected_fragments:
-                fragment.id_item.setOpacity(1.0)
-            else:
-                fragment.id_item.setOpacity(0.7)
-
-            self.scene.addItem(fragment.id_item)
-
-        if self.ids_enabled:
-            self.enableIds()
-        else:
-            self.disableIds()
+        fragment.drawFragment(
+            self.scene, 
+            back=self.back_vis, 
+            selected=fragment in self.selected_fragments, 
+            zvalue_fragments=self.Z_VALUE_FRAGMENTS, 
+            zvalue_ids=self.Z_VALUE_IDS,
+            zvalue_borders=self.Z_VALUE_BORDERS,
+            border_enabled=self.border_enabled)
+        fragment.enableIds(self.ids_enabled)
+        fragment.reapplyTransformsOnVerso(rotated=self.rotated)
 
     def undrawFragment(self, fragment):
-
-        self.scene.removeItem(fragment.qpixmap_back_item)
-
-        if fragment.qpixmap_back_item is not None:
-            self.scene.removeItem(fragment.qpixmap_back_item)
-            del fragment.qpixmap_back_item
-            fragment.qpixmap_back_item = None
-
-        if fragment.qpixmap_contour_back_item is not None:
-            self.scene.removeItem(fragment.qpixmap_contour_back_item)
-            del fragment.qpixmap_contour_back_item
-            fragment.qpixmap_contour_back_item = None
-
-        if fragment.id_back_item is not None:
-            self.scene.removeItem(fragment.id_back_item)
-            del fragment.id_back_item
-            fragment.id_back_item = None
-
-        if fragment.qpixmap_item is not None:
-            self.scene.removeItem(fragment.qpixmap_item)
-            del fragment.qpixmap_item
-            fragment.qpixmap_item = None
-
-        if fragment.qpixmap_contour_item is not None:
-            self.scene.removeItem(fragment.qpixmap_contour_item)
-            del fragment.qpixmap_contour_item
-            fragment.qpixmap_contour_item = None
-
-        if fragment.id_item is not None:
-            self.scene.removeItem(fragment.id_item)
-            del fragment.id_item
-            fragment.id_item = None
-
-        self.scene.invalidate()
+        fragment.undrawFragment(self.scene)
 
     def fragmentPositionChanged(self):
 
@@ -872,33 +709,6 @@ class QtImageViewerPlus(QGraphicsView):
             if self.working_area_rect is not None:
                 self.working_area_rect.setPen(self.working_area_pen)
 
-    def addFragmentBorder(self, fragment):
-
-        if self.back_vis is True:
-            if fragment.qpixmap_contour_back is not None and self.border_enabled:
-                fragment.qpixmap_contour_back_item = self.scene.addPixmap(fragment.qpixmap_contour_back)
-                fragment.qpixmap_contour_back_item.setZValue(self.Z_VALUE_BORDERS)
-                fragment.qpixmap_contour_back_item.setPos(fragment.bbox[1], fragment.bbox[0])
-        else:
-            if fragment.qpixmap_contour is not None and self.border_enabled:
-                fragment.qpixmap_contour_item = self.scene.addPixmap(fragment.qpixmap_contour)
-                fragment.qpixmap_contour_item.setZValue(self.Z_VALUE_BORDERS)
-                fragment.qpixmap_contour_item.setPos(fragment.bbox[1], fragment.bbox[0])
-
-
-    def removeFragmentBorder(self, fragment):
-
-        if self.back_vis is True:
-            if fragment.qpixmap_contour_back_item is not None:
-                self.scene.removeItem(fragment.qpixmap_contour_back_item)
-                del fragment.qpixmap_contour_back_item
-                fragment.qpixmap_contour_back_item = None
-        else:
-            if fragment.qpixmap_contour_item is not None:
-                self.scene.removeItem(fragment.qpixmap_contour_item)
-                del fragment.qpixmap_contour_item
-                fragment.qpixmap_contour_item = None
-
 #SELECTED BLOBS MANAGEMENT
 
     def addToSelectedList(self, fragment):
@@ -911,12 +721,13 @@ class QtImageViewerPlus(QGraphicsView):
         else:
             self.selected_fragments.append(fragment)
 
-        self.removeFragmentBorder(fragment)
-        fragment.prepareForDrawing()
-        self.addFragmentBorder(fragment)
-
-        fragment.id_item.setZValue(self.Z_VALUE_IDS)
-        fragment.id_item.setOpacity(1.0)
+        fragment.select(
+            self.scene, 
+            back=self.back_vis, 
+            border_enabled=self.border_enabled, 
+            zvalue_borders=self.Z_VALUE_BORDERS, 
+            zvalue_ids=self.Z_VALUE_IDS
+        )
 
         self.scene.invalidate()
         self.selectionChanged.emit()
@@ -926,10 +737,7 @@ class QtImageViewerPlus(QGraphicsView):
             # safer if iterating over selected_fragments and calling this function.
             self.selected_fragments = [x for x in self.selected_fragments if not x == fragment]
 
-            self.removeFragmentBorder(fragment)
-
-            fragment.id_item.setZValue(self.Z_VALUE_IDS)
-            fragment.id_item.setOpacity(0.7)
+            fragment.deselect(self.scene, back=self.back_vis, zvalue_ids=self.Z_VALUE_IDS)
 
             self.scene.invalidate()
 
@@ -955,7 +763,7 @@ class QtImageViewerPlus(QGraphicsView):
     def resetSelection(self):
 
         for fragment in self.selected_fragments:
-            self.removeFragmentBorder(fragment)
+            fragment.undrawBorders(self.scene, back=self.back_vis)
             fragment.id_item.setZValue(self.Z_VALUE_IDS)
             fragment.id_item.setOpacity(0.7)
 
