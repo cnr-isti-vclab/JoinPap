@@ -288,6 +288,9 @@ class QtImageViewerPlus(QGraphicsView):
                         transf.rotate(180)
                     fragment.id_back_item.setTransform(transf)
 
+        for tool in self.tools.tools.values():
+            tool.handleTransform()
+
     def updateViewer(self):
         """
         Show current zoom (if showing entire image, apply current aspect ratio mode).
@@ -585,8 +588,8 @@ class QtImageViewerPlus(QGraphicsView):
 
     def setTool(self, tool):
 
-        if not self.isVisible():
-            return
+        # if not self.isVisible():
+        #     return
 
         QApplication.setOverrideCursor(Qt.ArrowCursor)
 
@@ -671,13 +674,14 @@ class QtImageViewerPlus(QGraphicsView):
         mods = event.modifiers()
 
         if event.button() == Qt.LeftButton:
-            (x, y) = self.clipScenePos(scenePos)
+            self.hasBeenDragged = False
+            (x, y) = [round(scenePos.x()), round(scenePos.y())] #self.clipScenePos(scenePos)
             selected_fragment = self.project.fragmentClicked(x, y)
             self.leftMouseButtonPressed.emit(x, y)
 
-            multiple_selection = selected_fragment is not None and len(self.selected_fragments) >= 2
+            multiple_selection_and_not_shift = not (mods & Qt.ShiftModifier) and selected_fragment is not None and len(self.selected_fragments) >= 2
 
-            if not multiple_selection and (self.tools.tool == "PAN" or self.tools.tool == "MOVE"):
+            if not multiple_selection_and_not_shift and (self.tools.tool == "PAN" or self.tools.tool == "MOVE"):
                 # used from area selection and pen drawing
                 if not (mods & Qt.ShiftModifier):
                     if self.panEnabled:
@@ -697,7 +701,7 @@ class QtImageViewerPlus(QGraphicsView):
                 self.tools.leftPressed(x, y)
 
         if event.button() == Qt.RightButton:
-            (x, y) = self.clipScenePos(scenePos)
+            (x, y) = [round(scenePos.x()), round(scenePos.y())] # self.clipScenePos(scenePos)
             self.rightMouseButtonPressed.emit(x, y)
 
         QGraphicsView.mousePressEvent(self, event)
@@ -712,9 +716,9 @@ class QtImageViewerPlus(QGraphicsView):
 
         if event.button() == Qt.LeftButton:
             self.setDragMode(QGraphicsView.NoDrag)
-            (x, y) = self.clipScenePos(scenePos)
+            (x, y) = [round(scenePos.x()), round(scenePos.y())] # self.clipScenePos(scenePos)
 
-            if (mods & Qt.ShiftModifier) and self.dragSelectionStart:
+            if self.hasBeenDragged and (mods & Qt.ShiftModifier) and self.dragSelectionStart:
                 if abs(x - self.dragSelectionStart[0]) > 5 and abs(y - self.dragSelectionStart[1]) > 5:
                     self.dragSelection(x, y)
                     self.dragSelectionStart = None
@@ -726,6 +730,8 @@ class QtImageViewerPlus(QGraphicsView):
             else:
                 self.tools.leftReleased(x, y)
 
+            self.hasBeenDragged = False
+
     def mouseMoveEvent(self, event):
 
         QGraphicsView.mouseMoveEvent(self, event)
@@ -735,7 +741,8 @@ class QtImageViewerPlus(QGraphicsView):
         self.mouseMoved.emit(scenePos.x(), scenePos.y())
 
         if event.buttons() == Qt.LeftButton:
-            (x, y) = self.clipScenePos(scenePos)
+            self.hasBeenDragged = True
+            (x, y) = [round(scenePos.x()), round(scenePos.y())] # self.clipScenePos(scenePos)
 
             if (mods & Qt.ShiftModifier) and self.dragSelectionStart:
                 start = self.dragSelectionStart

@@ -47,3 +47,6 @@ class Tool(QObject):
 
     def reset(self):
         pass
+
+    def handleTransform(self):
+        pass

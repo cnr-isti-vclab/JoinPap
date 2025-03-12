@@ -1,6 +1,6 @@
 from .Tool import Tool
 from PyQt5.QtWidgets import QGraphicsLineItem
-from PyQt5.QtGui import QPen, QBrush, QImage, QPixmap, QTextCharFormat, QColor, QTextCursor
+from PyQt5.QtGui import QPen, QBrush, QImage, QPixmap, QTextCharFormat, QColor, QTextCursor, QTransform
 from PyQt5.QtCore import Qt
 from ..utils import pixelsToCentimeters
 from PyQt5.QtGui import QPixmap, QIcon
@@ -20,6 +20,15 @@ class Ruler(Tool):
         format.setBackground(QColor("yellow"))  # Set background color
         cursor.select(QTextCursor.Document)
         cursor.mergeCharFormat(format)
+
+    def handleTransform(self):
+        # transform the text label on the verso side
+        if self.viewerplus.back_vis and self.text is not None:
+            transf = QTransform()
+            transf.scale(1, -1)
+            if not self.viewerplus.rotated:
+                transf.rotate(180)
+            self.text.setTransform(transf)
 
     def leftPressed(self, x, y, mods):
         if self.line is not None:
@@ -45,6 +54,7 @@ class Ruler(Tool):
             self.text.setPos(x, y)
             self.text.setZValue(self.viewerplus.Z_VALUE_SELECTION_RECT)  # Bring the text on top of all other graphics elements
             self.applyTextBackground()
+            self.handleTransform()
 
             # Create the two spherical endpoints
             cross = QPixmap("icons/cross.png")
