@@ -119,7 +119,8 @@ class Fragment(object):
     def getImageBack(self):
 
         if self.qimage_back is not None:
-            nparray = qimageToNumpyArray(self.qimage_back)
+            mirrored_back = self.qimage_back.mirrored(True, False)
+            nparray = qimageToNumpyArray(mirrored_back)
         else:
             nparray = None
         return nparray
