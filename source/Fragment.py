@@ -18,6 +18,7 @@
 # for more details.
 
 import numpy as np
+import os
 import skimage.morphology
 
 from skimage import measure
@@ -81,7 +82,10 @@ class Fragment(object):
             self.qimage = QImage(filename)
             self.qimage = self.qimage.convertToFormat(QImage.Format_ARGB32)
 
-            filename_back = filename[:-4] + "_back" + filename[-4:]
+            if "verso" in filename:
+                raise Exception("You are trying to load a verso fragment as a recto fragment: " + filename)
+
+            filename_back = Fragment.searchBackFile(filename)
             self.qimage_back = QImage(filename_back)
             self.qimage_back = self.qimage_back.mirrored(True, False)
             self.qimage_back = self.qimage_back.convertToFormat(QImage.Format_ARGB32)
@@ -93,6 +97,22 @@ class Fragment(object):
             self.center = np.array((offset_x + self.qimage.width()/2, offset_y + self.qimage.height()/2))
 
             self.prepareForDrawing()
+
+    @staticmethod
+    def searchBackFile(filename):
+        """
+        Search for the back image of the fragment.
+        """
+
+        filename_back = filename[:-4] + "_back" + filename[-4:]
+        if not os.path.isfile(filename_back) and 'recto' in filename:
+            filename_back = filename.replace("recto", "verso")
+        if not os.path.isfile(filename_back) and 'front' in filename:
+            filename_back = filename.replace("front", "back")
+        if not os.path.isfile(filename_back):
+            return None
+        
+        return filename_back
 
     def setId(self, id):
 

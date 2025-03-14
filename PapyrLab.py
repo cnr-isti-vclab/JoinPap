@@ -1425,12 +1425,22 @@ class PapyrLab(QMainWindow):
         fragment_sizes = []
         valid_filenames = []
         for filename in images_names:
-            if filename.find("back") < 0 and filename not in [fragment.filename for fragment in self.project.fragments]:
-                valid_filenames.append(filename)
-                reader = QImageReader(filename)
-                width = reader.size().width()
-                height = reader.size().height()
-                fragment_sizes.append((width, height))
+            if filename in [fragment.filename for fragment in self.project.fragments]:
+                # fragment already in the workspace
+                continue
+
+            if Fragment.searchBackFile(filename) is None:
+                box = QMessageBox()
+                box.setWindowTitle('Loading Error')
+                box.setText(f"Could not load the file {filename}. The corresponding back image is missing.")
+                box.exec()
+                continue
+
+            valid_filenames.append(filename)
+            reader = QImageReader(filename)
+            width = reader.size().width()
+            height = reader.size().height()
+            fragment_sizes.append((width, height))
 
         positions = self.project.fragmentPacking(fragment_sizes)
         assert len(positions) == len(valid_filenames)
@@ -1466,7 +1476,14 @@ class PapyrLab(QMainWindow):
         folder_name = QFileDialog.getExistingDirectory(self, "Select a Folder", "")
         if folder_name:
             images_names = [x for x in glob.glob(os.path.join(folder_name, '*.png'))]
-            self._addToWorkspace(images_names)
+            back_images_names = [Fragment.searchBackFile(x) for x in images_names if Fragment.searchBackFile(x) is not None]
+            front_images_names = list(set(images_names) - set(back_images_names))
+            self._addToWorkspace(front_images_names)
+            if len(front_images_names) != len(back_images_names):
+                box = QMessageBox()
+                box.setWindowTitle('Loading Error')
+                box.setText(f"Some fragments could not be loaded due to back image missing.")
+                box.exec()
 
     @pyqtSlot()
     def importFragments(self):

@@ -231,6 +231,7 @@ class Project(object):
             print("Packing impossible in the provided working area. Trying to pack in a bigger area.")
             max_sizes = np.max(np.array(sizes, dtype=int), axis=0)
             max_width, max_height = int(max_sizes[0]), int(max_sizes[1])
+            new_width, new_height = None, None
             if max_width > self.working_area[0]:
                 new_width = sum([size[0] for size in sizes]) + 100
                 new_height = max_height
