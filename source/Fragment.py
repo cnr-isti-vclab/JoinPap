@@ -51,9 +51,9 @@ class Fragment(object):
 
         self.id = int(id)
         self.filename = filename
+        self.name, _ = os.path.splitext(os.path.basename(filename))
         self.bbox = [offset_y, offset_x, 0, 0]
         self.group_id = -1
-        self.name = ""
         self.note = ""
         self.center = np.array((offset_x, offset_y))
 
@@ -199,13 +199,13 @@ class Fragment(object):
         Set the blob information given it represented as a dictionary.
         """
 
-        self.filename = dict["filename"]
         self.id = int(dict["id"])
         self.group_id = int(dict["group id"])
+        self.filename = dict["filename"]
+        self.name = dict["name"]
         self.note = dict["note"]
         self.bbox = dict["bbox"]
         self.center = np.asarray(dict["center"])
-        self.filename = dict["filename"]
 
         if self.filename != "":
             self.qimage = QImage(self.filename)
@@ -225,6 +225,7 @@ class Fragment(object):
         dict = {}
 
         dict["filename"] = self.filename
+        dict["name"] = self.name
         dict["id"] = self.id
         dict["group id"] = self.group_id
         dict["note"] = self.note

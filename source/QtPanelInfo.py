@@ -15,6 +15,8 @@ class QtPanelInfo(QTabWidget):
         self.fields = {}
         self.attributes = []
 
+        self.area_note = None
+
         self.addTab(self.regionInfo(), "Properties")
 
         self.setAutoFillBackground(True)
@@ -33,27 +35,30 @@ class QtPanelInfo(QTabWidget):
 
         layout = QGridLayout()
 
-        fields = { 'id': 'Id:', 'group_id': 'Group:', 'name': 'Name:', 'note': 'Note:' }
+        fields = { 'id': 'Id:', 'group_id': 'Group:', 'name': 'Name:', 'filename': 'Path:' }
 
         self.fields = {}
         row = 0
-        col = 0
         for field in fields:
 
             label = QLabel(fields[field])
-            layout.addWidget(label, row, col)
-            if row == 1:
+            layout.addWidget(label, row, 0)
+            if field == "name":
                 # the value of this field is editable
                 value = self.fields[field] = QLineEdit('')
                 value.textChanged.connect(self.updateFragmentInfo)
             else:
                 value = self.fields[field] = QLabel('')
 
-            layout.addWidget(value, row, col+1)
-            col += 2
-            if col == 4:
-                row += 1
-                col = 0
+            layout.addWidget(value, row, 1)
+            row += 1
+
+        layout.addWidget(QLabel('Note:'), row, 0)
+
+        self.area_note = QTextEdit()
+        self.area_note.setMinimumHeight(80)
+        self.area_note.textChanged.connect(self.updateFragmentInfo)
+        layout.addWidget(self.area_note, row, 1)
 
         layout.setRowStretch(layout.rowCount(), 1)
         widget = QWidget()
@@ -65,7 +70,9 @@ class QtPanelInfo(QTabWidget):
 
         if self.fragment:
             self.fragment.name = self.fields['name'].text()
-            self.fragment.note = self.fields['note'].text()
+
+            if self.area_note is not None:
+                self.fragment.note = self.area_note.toPlainText()
 
     def clear(self):
 
@@ -90,3 +97,6 @@ class QtPanelInfo(QTabWidget):
                 self.fields[field].setText(str(value))
 
             self.fields[field].blockSignals(False)
+
+        if self.area_note is not None:
+            self.area_note.setText(self.fragment.note)
