@@ -30,28 +30,6 @@ from source.Fragment import Fragment
 from source.Project import Project
 from source.Tools import Tools
 
-class NoteWidget(QPlainTextEdit):
-
-    editFinishing = pyqtSignal()
-
-    def __init__(self, parent):
-        super(QPlainTextEdit, self).__init__(parent)
-
-        self.setStyleSheet("background-color: rgb(40,40,40); color: white")
-        self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
-        self.setFixedWidth(200)
-        self.setFixedHeight(60)
-        self.setWordWrapMode(True)
-        self.autoFillBackground()
-        self.setWindowTitle("Enter note below and press TAB")
-        self.setWindowFlags(Qt.ToolTip | Qt.CustomizeWindowHint | Qt.WA_Hover)
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Tab:
-            self.editFinishing.emit()
-        else:
-            QPlainTextEdit.keyPressEvent(self, event)
-
 
 #circular dependency. create a viewer and a derived class which also deals with the rest.
 class QtImageViewerPlus(QGraphicsView):
@@ -763,9 +741,7 @@ class QtImageViewerPlus(QGraphicsView):
     def resetSelection(self):
 
         for fragment in self.selected_fragments:
-            fragment.undrawBorders(self.scene, back=self.back_vis)
-            fragment.id_item.setZValue(self.Z_VALUE_IDS)
-            fragment.id_item.setOpacity(0.7)
+            fragment.deselect(self.scene, back=self.back_vis, zvalue_ids=self.Z_VALUE_IDS)
 
         self.selected_fragments.clear()
         self.scene.invalidate(self.scene.sceneRect())
