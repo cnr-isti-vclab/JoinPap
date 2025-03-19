@@ -446,14 +446,16 @@ class QtImageViewerPlus(QGraphicsView):
                         self.removeFromSelectedList(fragment)
                     else:
                         self.addToSelectedList(fragment)
-                        self.updateInfoPanel.emit(fragment)
+                        if isinstance(fragment, Fragment):
+                            self.updateInfoPanel.emit(fragment)
             else:
                 if selected_fragment:
                     if selected_fragment in self.selected_fragments:
                         self.removeFromSelectedList(selected_fragment)
                     else:
                         self.addToSelectedList(selected_fragment)
-                        self.updateInfoPanel.emit(selected_fragment)
+                        if isinstance(selected_fragment, Fragment):
+                            self.updateInfoPanel.emit(selected_fragment)
 
             self.parent.image_set_widget.scrollToFragment(selected_fragment,verso=self.back_vis)
             self.newSelection.emit()

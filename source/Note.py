@@ -12,34 +12,39 @@ class Note(Movable):
         note.setFlag(QGraphicsTextItem.ItemIsSelectable, True)
         # Create a QFont object
         font = QFont("Arial", 70, QFont.Bold)
-
         # Set the font for the QGraphicsTextItem
         note.setFont(font)
-        note.setPlainText('Note')
+        note.setDefaultTextColor(Qt.black)
+        note.setHtml('<div style="background-color: gray;">Note</div>')
         note.setPos(x, y)
         self.note = note
         self.id = id
-
-    @property
-    def bbox(self):
+        self.group_id = -1
         bounding_rect = self.note.boundingRect()
-        return [bounding_rect.y(), bounding_rect.x(), bounding_rect.width(), bounding_rect.height()]
-    
+        self.center = [x, y]
+        self.bbox = [y, x, bounding_rect.width(), bounding_rect.height()]
+
     @property
     def filename(self):
         return None
+    
+    def displace(self, dx, dy, back=False):
+        self.note.moveBy(dx, dy)
 
     def draw(self, scene, **kwargs):
-        scene.addItem(self.note)
+        if self.note.scene() is None:
+            scene.addItem(self.note)
+        else:
+            self.note.setPos(self.center[0], self.center[1])
 
     def undraw(self, scene, **kwargs):
         scene.removeItem(self.note)
 
     def select(self, scene, **kwargs):
-        pass
+        self.note.setSelected(True)
 
     def deselect(self, scene, **kwargs):
-        pass
+        self.note.setSelected(False)
 
     def reapplyTransformsOnVerso(self, rotated=False):
         pass

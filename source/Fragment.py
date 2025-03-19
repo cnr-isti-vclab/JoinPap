@@ -22,7 +22,7 @@ import os
 import skimage.morphology
 
 from skimage import measure
-from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtCore import Qt, QRectF, QPoint
 from PyQt5.QtGui import QImage, QPixmap, QTransform, QFont, QBrush, QColor
 from PyQt5.QtWidgets import QGraphicsSimpleTextItem
 
@@ -172,21 +172,25 @@ class Fragment(Movable):
             nparray = None
         return nparray
 
-    def updatePosition(self, dx, dy):
+    def displace(self, dx, dy, back=False):
+        if not back:
+            pt = self.qpixmap_item.pos()
+            self.qpixmap_item.setPos(pt + QPoint(dx, dy))
+            pt = self.id_item.pos()
+            self.id_item.setPos(pt + QPoint(dx, dy))
 
-        self.center[0] += dx
-        self.center[1] += dy
+            if self.qpixmap_contour_item is not None:
+                pt = self.qpixmap_contour_item.pos()
+                self.qpixmap_contour_item.setPos(pt + QPoint(dx, dy))
+        else:
+            pt = self.qpixmap_back_item.pos()
+            self.qpixmap_back_item.setPos(pt + QPoint(dx,dy))
+            pt = self.id_back_item.pos()
+            self.id_back_item.setPos(pt + QPoint(dx,dy))
 
-        self.bbox[0] += dy
-        self.bbox[1] += dx
-
-    def setPosition(self, newX, newY):
-
-        self.center[0] = newX + self.bbox[2] / 2
-        self.center[1] = newY + self.bbox[3] / 2
-
-        self.bbox[0] = newY
-        self.bbox[1] = newX
+            if self.qpixmap_contour_back_item is not None:
+                pt = self.qpixmap_contour_back_item.pos()
+                self.qpixmap_contour_back_item.setPos(pt + QPoint(dx,dy))
 
     def prepareForDrawing(self):
         """

@@ -18,3 +18,22 @@ class Movable(object):
 
     def reapplyTransformsOnVerso(self, rotated=False):
         return NotImplementedError
+    
+    def displace(self, dx, dy, **kwargs):
+        return NotImplementedError
+    
+    def updatePosition(self, dx, dy):
+
+        self.center[0] += dx
+        self.center[1] += dy
+
+        self.bbox[0] += dy
+        self.bbox[1] += dx
+
+    def setPosition(self, newX, newY):
+
+        self.center[0] = newX + self.bbox[2] / 2
+        self.center[1] = newY + self.bbox[3] / 2
+
+        self.bbox[0] = newY
+        self.bbox[1] = newX
