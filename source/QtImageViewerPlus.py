@@ -285,14 +285,16 @@ class QtImageViewerPlus(QGraphicsView):
     def enableBorders(self):
         if self.project is not None:
             for fragment in self.project.fragments:
-                fragment.drawBorders(self.scene, back=self.back_vis, enabled=self.border_enabled, zvalue_borders=self.Z_VALUE_BORDERS)
+                if isinstance(fragment, Fragment):
+                    fragment.drawBorders(self.scene, back=self.back_vis, enabled=self.border_enabled, zvalue_borders=self.Z_VALUE_BORDERS)
 
         self.border_enabled = True
 
     def disableBorders(self):
         if self.project is not None:
             for fragment in self.project.fragments:
-                fragment.undrawBorders(self.scene, back=self.back_vis)
+                if isinstance(fragment, Fragment):
+                    fragment.undrawBorders(self.scene, back=self.back_vis)
 
         self.border_enabled = False
 
@@ -370,7 +372,7 @@ class QtImageViewerPlus(QGraphicsView):
             self.enableIds()
 
     def drawFragment(self, fragment):
-        fragment.drawFragment(
+        fragment.draw(
             self.scene, 
             back=self.back_vis, 
             selected=fragment in self.selected_fragments, 
@@ -382,7 +384,7 @@ class QtImageViewerPlus(QGraphicsView):
         fragment.reapplyTransformsOnVerso(rotated=self.rotated)
 
     def undrawFragment(self, fragment):
-        fragment.undrawFragment(self.scene)
+        fragment.undraw(self.scene)
 
     def fragmentPositionChanged(self):
 

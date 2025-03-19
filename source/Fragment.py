@@ -27,6 +27,7 @@ from PyQt5.QtGui import QImage, QPixmap, QTransform, QFont, QBrush, QColor
 from PyQt5.QtWidgets import QGraphicsSimpleTextItem
 
 from source.utils import qimageToNumpyArray, maskToQImage, maskToQImageWTrasparency
+from .Movable import Movable
 
 class TextItem(QGraphicsSimpleTextItem):
     def __init__(self, text, font, background_color=QColor(80, 80, 80)):
@@ -65,7 +66,7 @@ def pointsBox(points, pad = 0):
     box[3] -= box[0]
     return np.array(box).astype(int)
 
-class Fragment(object):
+class Fragment(Movable):
     """
     Fragment represents a fragment belonging to the papyrus.
     It can be tagged such that it belongs to a specific group and annotated.
@@ -259,7 +260,7 @@ class Fragment(object):
                 transf.rotate(180)
             self.id_back_item.setTransform(transf)
 
-    def drawFragment(self, scene, back=False, selected=False, zvalue_fragments=0, zvalue_ids=0, zvalue_borders=0, border_enabled=True):
+    def draw(self, scene, back=False, selected=False, zvalue_fragments=0, zvalue_ids=0, zvalue_borders=0, border_enabled=True):
         if back:
             # if it has just been created remove the current graphics item in order to set it again
             if self.qpixmap_back_item is not None:
@@ -329,7 +330,7 @@ class Fragment(object):
 
             scene.addItem(self.id_item)
 
-    def undrawFragment(self, scene):
+    def undraw(self, scene):
         scene.removeItem(self.qpixmap_back_item)
 
         if self.qpixmap_back_item is not None:

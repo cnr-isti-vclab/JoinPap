@@ -47,6 +47,7 @@ from source.QtSettingsWidget import QtSettingsWidget
 from source.QtWorkingAreaWidget import QtWorkingAreaWidget
 from source.QtHelpWidget import QtHelpWidget
 from source.Fragment import Fragment
+from source.Note import Note
 from source.Project import Project
 from source.QtGridWidget import QtGridWidget
 from source.QtPanelInfo import QtPanelInfo
@@ -177,7 +178,6 @@ class PapyrLab(QMainWindow):
         self.markEmpty = self.newAction("Mark cell as empty",  "",   self.markEmptyOperation)
         self.markIncomplete = self.newAction("Mark cell as incomplete", "",   self.markIncompleteOperation)
         self.markComplete = self.newAction("Mark cell as complete", "",   self.markCompleteOperation)
-        self.addNote = self.newAction("Add/edit note", "",   self.addNoteOperation)
 
         self.groupAction        = self.newAction("Group",    "G",  self.groupOperation)
         self.ungroupAction      = self.newAction("Ungroup",  "U",  self.ungroupOperation)
@@ -190,7 +190,6 @@ class PapyrLab(QMainWindow):
         self.viewerplus.activated.connect(self.setActiveViewer)
         self.viewerplus.updateInfoPanel[Fragment].connect(self.updatePanelInfo)
         self.viewerplus.mouseMoved[float, float].connect(self.updateMousePos)
-        self.viewerplus.selectionChanged.connect(self.updateEditActions)
         self.viewerplus.selectionReset.connect(self.resetPanelInfo)
         self.viewerplus.updateAllViewers.connect(self.updateAllViewers)
 
@@ -200,7 +199,6 @@ class PapyrLab(QMainWindow):
         self.viewerplus2.activated.connect(self.setActiveViewer)
         self.viewerplus2.updateInfoPanel[Fragment].connect(self.updatePanelInfo)
         self.viewerplus2.mouseMoved[float, float].connect(self.updateMousePos)
-        self.viewerplus2.selectionChanged.connect(self.updateEditActions)
         self.viewerplus2.selectionReset.connect(self.resetPanelInfo)
         self.viewerplus2.updateAllViewers.connect(self.updateAllViewers)
 
@@ -487,24 +485,6 @@ class PapyrLab(QMainWindow):
         return button
 
     @pyqtSlot()
-    def updateEditActions(self):
-
-        if self.btnGrid.isChecked():
-            self.markEmpty.setVisible(True)
-            self.markComplete.setVisible(True)
-            self.markIncomplete.setVisible(True)
-            self.addNote.setVisible(True)
-        else:
-            self.markEmpty.setVisible(False)
-            self.markComplete.setVisible(False)
-            self.markIncomplete.setVisible(False)
-            self.addNote.setVisible(False)
-
-        nSelected = len(self.viewerplus.selected_fragments) + len(self.viewerplus2.selected_fragments)
-        self.groupAction.setEnabled(nSelected > 1)
-        self.ungroupAction.setEnabled(nSelected > 1)
-
-    @pyqtSlot()
     def markEmptyOperation(self):
         if self.contextMenuPosition is not None:
             self.activeviewer.updateCellState(self.contextMenuPosition.x(),self.contextMenuPosition.y(), 0)
@@ -518,12 +498,6 @@ class PapyrLab(QMainWindow):
     def markCompleteOperation(self):
         if self.contextMenuPosition is not None:
             self.activeviewer.updateCellState(self.contextMenuPosition.x(), self.contextMenuPosition.y(), 2)
-
-    @pyqtSlot()
-    def addNoteOperation(self):
-
-        if self.contextMenuPosition is not None and self.btnGrid.isChecked():
-            self.activeviewer.addNote(self.contextMenuPosition.x(), self.contextMenuPosition.y())
 
     # call by pressing right button
     def openContextMenu(self, position):
@@ -541,10 +515,6 @@ class PapyrLab(QMainWindow):
 
         menu.setStyleSheet(str)
 
-        menu.addAction(self.markEmpty)
-        menu.addAction(self.markIncomplete)
-        menu.addAction(self.markComplete)
-        menu.addAction(self.addNote)
         menu.addSeparator()
         menu.addAction(self.groupAction)
         menu.addAction(self.ungroupAction)
@@ -589,7 +559,6 @@ class PapyrLab(QMainWindow):
         ##### PROJECTS
 
         newAct = QAction("New Project", self)
-        newAct.setShortcut('Ctrl+N')
         newAct.setStatusTip("Create A New Project")
         newAct.triggered.connect(self.newProject)
 
@@ -626,6 +595,12 @@ class PapyrLab(QMainWindow):
         addImagesAct.setShortcut('Ctrl+I')
         addImagesAct.setStatusTip("Add one or more images to the project")
         addImagesAct.triggered.connect(self.addImages)
+
+        addNotesAct = QAction("Add Notes", self)
+        addNotesAct.setShortcut('Ctrl+N')
+        addNotesAct.setStatusTip("Add notes to the fragments")
+        addNotesAct.triggered.connect(self.addNotes)
+
 
         ### IMPORT
 
@@ -696,6 +671,7 @@ class PapyrLab(QMainWindow):
         # self.projectmenu.addAction(setWorkingAreaAct) # FIXME: temporary removed since already in the settings... is there a reason why it was replicated?
         self.projectmenu.addAction(addFolderAct)
         self.projectmenu.addAction(addImagesAct)
+        self.projectmenu.addAction(addNotesAct)
 
         splitScreenAction = QAction("Enable Split Screen", self)
         splitScreenAction.setShortcut('Alt+S')
@@ -1290,12 +1266,6 @@ class PapyrLab(QMainWindow):
 
         self.image_set_widget.updateComboGroups()
 
-    @pyqtSlot()
-    def noteChanged(self):
-
-        if len(self.activeviewer.selected_blobs) > 0:
-            for blob in self.activeviewer.selected_blobs:
-                blob.note = self.editNote.toPlainText()
     #
     @pyqtSlot()
     def updatePanelInfoSelected(self):
@@ -1460,6 +1430,15 @@ class PapyrLab(QMainWindow):
         self.updateToolStatus()
 
         QApplication.restoreOverrideCursor()
+
+    @pyqtSlot()
+    def addNotes(self):
+        # get current mouse position
+        pos = self.cursor().pos()
+        id = self.project.getFreeFragmentId()
+        note = Note(pos.x(), pos.y(), id)
+        note.draw(self.viewerplus.scene)
+        self.project.addFragment(note)
 
     @pyqtSlot()
     def addImages(self):
