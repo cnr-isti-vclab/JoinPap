@@ -1434,11 +1434,13 @@ class PapyrLab(QMainWindow):
     @pyqtSlot()
     def addNotes(self):
         # get current mouse position
-        pos = self.cursor().pos()
+        pos = self.viewerplus.mapFromGlobal(self.cursor().pos())
+        scenePos = self.viewerplus.mapToScene(pos)
         id = self.project.getFreeFragmentId()
-        note = Note(pos.x(), pos.y(), id)
+        note = Note(scenePos.x(), scenePos.y(), id)
         note.draw(self.viewerplus.scene)
         self.project.addFragment(note)
+        self.updateToolStatus()
 
     @pyqtSlot()
     def addImages(self):

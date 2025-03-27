@@ -123,6 +123,7 @@ class QtImageViewerPlus(QGraphicsView):
         self.Z_VALUE_BORDERS = 3
         self.Z_VALUE_IDS = 4
         self.Z_VALUE_TEXT = 5
+        self.Z_VALUE_NOTE = 6
         self.Z_VALUE_SELECTION_RECT = 10
 
         # working area
@@ -376,9 +377,6 @@ class QtImageViewerPlus(QGraphicsView):
             self.scene, 
             back=self.back_vis, 
             selected=fragment in self.selected_fragments, 
-            zvalue_fragments=self.Z_VALUE_FRAGMENTS, 
-            zvalue_ids=self.Z_VALUE_IDS,
-            zvalue_borders=self.Z_VALUE_BORDERS,
             border_enabled=self.border_enabled)
         fragment.enableIds(self.ids_enabled)
         fragment.reapplyTransformsOnVerso(rotated=self.rotated)
@@ -468,15 +466,6 @@ class QtImageViewerPlus(QGraphicsView):
             pos = self.mapFromGlobal(QPoint(x, y))
             scenePos = self.mapToScene(pos)
             self.project.grid.changeCellState(scenePos.x(), scenePos.y(), state)
-
-    def addNote(self, x, y):
-        """
-        Insert the node to add.
-        """
-        if self.project.grid is not None and self.show_grid is True:
-            pos = self.mapFromGlobal(QPoint(x, y))
-            scenePos = self.mapToScene(pos)
-            self.image.project.addNote(scenePos.x(), scenePos.y(), "Enter note..")
 
     def paintEvent(self, event):
 

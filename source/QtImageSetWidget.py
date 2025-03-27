@@ -25,6 +25,8 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QMessageBox, QScrollArea, QSizePolicy, \
     QHBoxLayout, QVBoxLayout, QGridLayout
 
+from source.Fragment import Fragment
+
 class QMiniImage(QWidget):
 
     THUMB_SIZE = 200
@@ -89,7 +91,9 @@ class QtImageSetWidget(QWidget):
 
     pyqtSlot(int)
     def groupChanged(self, index):
-
+        if index < 0:   # FIXME: this should not happen
+            return
+        
         txt = self.combo_group.itemText(index)
 
         if txt == "All":
@@ -128,7 +132,8 @@ class QtImageSetWidget(QWidget):
         self.grid_widget.setLayout(self.grid_layout)
 
         for fragment in fragments:
-            self.addImage(fragment)
+            if isinstance(fragment, Fragment):
+                self.addImage(fragment)
 
         self.scroll_area.setWidget(self.grid_widget)
 

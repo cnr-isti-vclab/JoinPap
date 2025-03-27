@@ -264,7 +264,12 @@ class Fragment(Movable):
                 transf.rotate(180)
             self.id_back_item.setTransform(transf)
 
-    def draw(self, scene, back=False, selected=False, zvalue_fragments=0, zvalue_ids=0, zvalue_borders=0, border_enabled=True):
+    def draw(self, scene, back=False, selected=False, border_enabled=True):
+        view = scene.views()[0]
+        zvalue_fragments = view.Z_VALUE_FRAGMENTS
+        zvalue_ids = view.Z_VALUE_IDS
+        zvalue_borders = view.Z_VALUE_BORDERS
+
         if back:
             # if it has just been created remove the current graphics item in order to set it again
             if self.qpixmap_back_item is not None:
@@ -397,7 +402,7 @@ class Fragment(Movable):
 
         if self.filename != "":
             self.qimage = QImage(self.filename)
-            filename_back = self.filename[:-4] + "_back" + self.filename[-4:]
+            filename_back = Fragment.searchBackFile(self.filename)
             self.qimage_back = QImage(filename_back)
 
             self.prepareForDrawing()
@@ -419,6 +424,7 @@ class Fragment(Movable):
         dict["note"] = self.note
         dict["bbox"] = self.bbox
         dict["center"] = self.center.tolist()
+        dict["class"] = "fragment"
 
         return dict
 

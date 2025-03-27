@@ -37,3 +37,12 @@ class Movable(object):
 
         self.bbox[0] = newY
         self.bbox[1] = newX
+
+    def save(self):
+        return NotImplementedError
+    
+    def toDict(self):
+        return NotImplementedError
+    
+    def fromDict(self, dict):
+        return NotImplementedError

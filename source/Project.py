@@ -7,6 +7,8 @@ from PyQt5.QtGui import QImageReader
 from PyQt5.QtWidgets import QMessageBox
 
 from source.Fragment import Fragment
+from source.Note import Note
+from source.Movable import Movable
 from source.Group import Group
 from source.Grid import Grid
 import source.utils as utils
@@ -18,7 +20,7 @@ import random
 
 class ProjectEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, Fragment):
+        if isinstance(obj, Movable):
             return obj.save()
         elif isinstance(obj, Grid):
             return obj.save()
@@ -55,7 +57,10 @@ class Project(object):
         # create all fragments
         self.fragments = []
         for fragment_data in data["fragments"]:
-            fragment = Fragment("", 0, 0, 0)
+            if fragment_data["class"] == "fragment":
+                fragment = Fragment("", 0, 0, 0)
+            elif fragment_data["class"] == "note":
+                fragment = Note(0, 0, 0)
             fragment.fromDict(fragment_data)
             self.fragments.append(fragment)
 
