@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtWidgets import QGraphicsTextItem, QGraphicsRectItem, QGraphicsItem
-from PyQt5.QtGui import QFont, QBrush, QColor, QPen
+from PyQt5.QtGui import QFont, QBrush, QColor, QPen, QTransform
 
 from .Movable import Movable
 
@@ -44,12 +44,13 @@ class NoteItem(QGraphicsRectItem):
         self.text_item.setPos(self.padding, self.padding)
 
 class Note(Movable):
-    def __init__(self, x, y, id):
+    def __init__(self, x, y, id, where):
         note = NoteItem()
         note.setPos(x, y)
         self.note = note
         self.id = id
         self.group_id = -1
+        self.where = where
 
     @property
     def bbox(self):
@@ -77,7 +78,9 @@ class Note(Movable):
     def displace(self, dx, dy, back=False):
         self.note.moveBy(dx, dy)
 
-    def draw(self, scene, **kwargs):
+    def draw(self, scene, back, **kwargs):
+        if back and self.where == "recto" or not back and self.where == "verso":
+            return
         self.note.setZValue(scene.views()[0].Z_VALUE_NOTE)
         if self.note.scene() is None:
             scene.addItem(self.note)
@@ -94,7 +97,13 @@ class Note(Movable):
         self.note.setSelected(False)
 
     def reapplyTransformsOnVerso(self, rotated=False):
-        pass
+        if self.where == "verso":
+            self.note.resetTransform()
+            transf = QTransform()
+            transf.scale(-1, 1)  # Flip along the x-axis
+            if rotated:
+                transf.rotate(180)
+            self.note.setTransform(transf)
 
     def enableIds(self, enable):
         pass
@@ -117,6 +126,7 @@ class Note(Movable):
         dict["bbox"] = self.bbox
         dict["center"] = self.center
         dict["class"] = "note"
+        dict["where"] = self.where
 
         return dict
     
@@ -130,7 +140,9 @@ class Note(Movable):
         note_text = dict["note"]
         self.bbox = dict["bbox"]
         self.center = dict["center"]
+        self.where = dict["where"]
 
         self.note.text_item.setPlainText(note_text)
+
     def save(self):
         return self.toDict()

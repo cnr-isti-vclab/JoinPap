@@ -821,6 +821,9 @@ class PapyrLab(QMainWindow):
                 viewer.resetSelection()
                 viewer.resetTools()
 
+        if event.key() == Qt.Key_N:
+            self.addNotes()
+
         elif event.key() == Qt.Key_S and modifiers & Qt.ControlModifier:
             self.save()
 
@@ -1434,11 +1437,30 @@ class PapyrLab(QMainWindow):
     @pyqtSlot()
     def addNotes(self):
         # get current mouse position
-        pos = self.viewerplus.mapFromGlobal(self.cursor().pos())
-        scenePos = self.viewerplus.mapToScene(pos)
+        cursor_pos = self.cursor().pos()
+        pos_recto = self.viewerplus.mapFromGlobal(cursor_pos)
+        pos_verso = self.viewerplus2.mapFromGlobal(cursor_pos)
+        scene_pos_recto = self.viewerplus.mapToScene(pos_recto)
+        scene_pos_verso = self.viewerplus2.mapToScene(pos_verso)
+        
+        mouse_in_recto = self.viewerplus.rect().contains(pos_recto)
+        mouse_in_verso = self.viewerplus2.rect().contains(pos_verso)
+        if mouse_in_recto:
+            scene_pos = scene_pos_recto
+            viewer = self.viewerplus
+            where = "recto"
+        elif mouse_in_verso:
+            scene_pos = scene_pos_verso
+            viewer = self.viewerplus2
+            where = "verso"
+        else:
+            # no note added
+            return
+
         id = self.project.getFreeFragmentId()
-        note = Note(scenePos.x(), scenePos.y(), id)
-        note.draw(self.viewerplus.scene)
+        note = Note(scene_pos.x(), scene_pos.y(), id, where=where)
+        note.draw(viewer.scene, back=(where == "verso"))
+        note.reapplyTransformsOnVerso()
         self.project.addFragment(note)
         self.updateToolStatus()
 

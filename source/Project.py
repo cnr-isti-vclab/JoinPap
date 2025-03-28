@@ -60,7 +60,7 @@ class Project(object):
             if fragment_data["class"] == "fragment":
                 fragment = Fragment("", 0, 0, 0)
             elif fragment_data["class"] == "note":
-                fragment = Note(0, 0, 0)
+                fragment = Note(0, 0, 0, where=fragment_data["where"])
             fragment.fromDict(fragment_data)
             self.fragments.append(fragment)
 
