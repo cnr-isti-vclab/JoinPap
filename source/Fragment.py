@@ -220,6 +220,17 @@ class Fragment(Movable):
             return None
         
         return filename_back
+    
+    def updateName(self, name):
+        """
+        Update the name of the fragment.
+        """
+
+        self.name = name
+        if self.id_item is not None:
+            self.id_item.setText(name)
+        if self.id_back_item is not None:
+            self.id_back_item.setText(name)
 
     def setId(self, id):
 
@@ -388,7 +399,7 @@ class Fragment(Movable):
                 self.drawBorders(scene, back=True, enabled=border_enabled, zvalue_borders=zvalue_borders)
 
             font_size = 70
-            self.id_back_item = TextItem(str(os.path.basename(self.filename)), QFont("Roboto", font_size, QFont.Bold))
+            self.id_back_item = TextItem(self.name, QFont("Roboto", font_size, QFont.Bold))
             self.id_back_item.setPos(self.center[0], self.center[1])
             # super trick: if the whole scene is rotated 180 degrees, the text should be rotated as well so it always looks upright
             self.id_back_item.setZValue(zvalue_ids)
@@ -422,7 +433,7 @@ class Fragment(Movable):
                 self.drawBorders(scene, enabled=border_enabled, zvalue_borders=zvalue_borders)
 
             font_size = 70
-            self.id_item = TextItem(str(os.path.basename(self.filename)), QFont("Roboto", font_size, QFont.Bold))
+            self.id_item = TextItem(self.name, QFont("Roboto", font_size, QFont.Bold))
             # bbox = fragment.bbox
             # fragment.id_item.setTransformOriginPoint(QPointF(fragment))
             self.id_item.setPos(self.center[0], self.center[1])

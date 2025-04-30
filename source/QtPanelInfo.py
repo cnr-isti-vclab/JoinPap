@@ -49,6 +49,7 @@ class QtPanelInfo(QTabWidget):
                 value.textChanged.connect(self.updateFragmentInfo)
             else:
                 value = self.fields[field] = QLabel('')
+                value.setWordWrap(True)
 
             layout.addWidget(value, row, 1)
             row += 1
@@ -69,7 +70,7 @@ class QtPanelInfo(QTabWidget):
     def updateFragmentInfo(self):
 
         if self.fragment:
-            self.fragment.name = self.fields['name'].text()
+            self.fragment.updateName(self.fields['name'].text())
 
             if self.area_note is not None:
                 self.fragment.note = self.area_note.toPlainText()
