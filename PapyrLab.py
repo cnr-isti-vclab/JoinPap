@@ -1052,6 +1052,8 @@ class PapyrLab(QMainWindow):
             self.gridWidget.close()
             self.gridWidget = None
 
+        self.image_set_widget.removeImages(self.project.fragments)
+
         self.viewerplus.clear()
         self.viewerplus2.clear()
         self.viewerplus.resetTools()
@@ -1409,10 +1411,18 @@ class PapyrLab(QMainWindow):
                 box.exec()
                 continue
 
-            valid_filenames.append(filename)
             reader = QImageReader(filename)
-            width = reader.size().width()
-            height = reader.size().height()
+            if not reader.canRead():
+                box = QMessageBox()
+                box.setWindowTitle('Loading Error')
+                box.setText(f"Could not load the file {filename}. The file is not a valid image.")
+                box.exec()
+                continue
+
+            valid_filenames.append(filename)
+            img = Fragment.crop_opaque_content_numpy(reader.read()) # FIXME: inefficient, image is open here to take dimensions and then opened again in Fragment instantiation
+            width = img.size().width()
+            height = img.size().height()
             fragment_sizes.append((width, height))
 
         positions = self.project.fragmentPacking(fragment_sizes)

@@ -19,6 +19,7 @@
 
 import numpy as np
 import os
+import cv2
 import skimage.morphology
 
 from skimage import measure
@@ -26,7 +27,7 @@ from PyQt5.QtCore import Qt, QRectF, QPoint
 from PyQt5.QtGui import QImage, QPixmap, QTransform, QFont, QBrush, QColor
 from PyQt5.QtWidgets import QGraphicsSimpleTextItem
 
-from source.utils import qimageToNumpyArray, maskToQImage, maskToQImageWTrasparency
+from source.utils import qimageToNumpyArray, maskToQImage, maskToQImageWTrasparency, rgbToQImage
 from .Movable import Movable
 
 class TextItem(QGraphicsSimpleTextItem):
@@ -106,16 +107,10 @@ class Fragment(Movable):
         # load image
         if filename != "":
 
-            self.qimage = QImage(filename)
-            self.qimage = self.qimage.convertToFormat(QImage.Format_ARGB32)
-
             if "verso" in filename:
                 raise Exception("You are trying to load a verso fragment as a recto fragment: " + filename)
 
-            filename_back = Fragment.searchBackFile(filename)
-            self.qimage_back = QImage(filename_back)
-            self.qimage_back = self.qimage_back.mirrored(True, False)
-            self.qimage_back = self.qimage_back.convertToFormat(QImage.Format_ARGB32)
+            self.load_images(filename)
 
             # BBOX FORMAT: top, left, width, height
             self.bbox = [offset_y, offset_x, self.qimage.width(), self.qimage.height()]
@@ -124,6 +119,91 @@ class Fragment(Movable):
             self.center = np.array((offset_x + self.qimage.width()/2, offset_y + self.qimage.height()/2))
 
             self.prepareForDrawing()
+
+    def load_images(self, filename):
+        self.qimage = QImage(filename)
+        self.qimage = self.qimage.convertToFormat(QImage.Format_ARGB32)
+        self.qimage = Fragment.crop_opaque_content_numpy(self.qimage)
+
+        filename_back = Fragment.searchBackFile(filename)
+        self.qimage_back = QImage(filename_back)
+        self.qimage_back = self.qimage_back.mirrored(True, False)
+        self.qimage_back = self.qimage_back.convertToFormat(QImage.Format_ARGB32)
+        self.qimage_back = Fragment.crop_opaque_content_numpy(self.qimage_back)
+
+        size = self.qimage.size()
+        size_back = self.qimage_back.size()
+        if abs(size.width() - size_back.width()) > 25 or abs(size.height() - size_back.height()) > 25:
+            print("Warning: the recto and verso images have consistently different sizes: " + filename + " (" + str(size.width()) + "x" + str(size.height()) + ") vs " + str(size_back.width()) + "x" + str(size_back.height()) + ")")
+
+    @staticmethod
+    def crop_opaque_content_numpy(image: QImage) -> QImage:
+        """
+        Efficiently crops a QImage using NumPy and OpenCV to the smallest
+        bounding box containing all opaque content.
+
+        Args:
+            image: The input QImage, which must have an alpha channel and be in
+                Format_ARGB32 or Format_RGB32. Format_ARGB32 is preferred.
+
+        Returns:
+            A new, cropped QImage, or an empty QImage if the input is
+            entirely transparent.
+        """
+        # Ensure the image has a format with an alpha channel that we can work with.
+        # ARGB32 is the most common and is stored as BGRA in memory on little-endian systems.
+        if image.format() != QImage.Format_ARGB32:
+            image = image.convertToFormat(QImage.Format_ARGB32)
+            
+        # --- 1. Convert QImage to NumPy array ---
+        # Get a pointer to the image data
+        ptr = image.bits()
+        # Set the size of the pointer to the byte count of the image
+        ptr.setsize(image.byteCount())
+        # Create a NumPy array from the buffer. The shape is (height, width, 4)
+        # The 4 channels are B, G, R, A (Blue, Green, Red, Alpha).
+        arr = np.array(ptr).reshape(image.height(), image.width(), 4)
+
+        # --- 2. Find bounding box using OpenCV ---
+        # Extract the Alpha channel
+        alpha_channel = (arr[:, :, 3] > 250).astype(np.uint8)
+
+        # Define a kernel (e.g., a 3x3 square)
+        kernel = np.ones((3, 3), np.uint8)
+
+        # Perform a morphological opening to remove small noise
+        # The 'iterations' parameter controls how aggressively it cleans.
+        cleaned_mask = cv2.morphologyEx(alpha_channel, cv2.MORPH_OPEN, kernel, iterations=1)
+
+        # Find the coordinates of all opaque pixels (alpha > 0)
+        coords = cv2.findNonZero(cleaned_mask)
+
+        # If the image is fully transparent, coords will be None
+        if coords is None:
+            return QImage()
+
+        # Get the bounding rectangle
+        x, y, w, h = cv2.boundingRect(coords)
+
+        # --- 3. Crop the NumPy array using slicing ---
+        cropped_arr = arr[y:y+h, x:x+w]
+
+        # --- 4. Convert cropped NumPy array back to QImage ---
+        # Get the dimensions of the cropped array
+        cropped_height, cropped_width, _ = cropped_arr.shape
+        
+        # Create the QImage. We need to pass a *copy* of the data (`.data.tobytes()`)
+        # because the `cropped_arr` will go out of scope and be garbage collected.
+        bytes_per_line = cropped_width * 4
+        cropped_image = QImage(
+            cropped_arr.copy().data.tobytes(), # Make a copy of the data
+            cropped_width,
+            cropped_height,
+            bytes_per_line,
+            QImage.Format_ARGB32
+        )
+
+        return cropped_image
 
     @staticmethod
     def searchBackFile(filename):
@@ -401,9 +481,7 @@ class Fragment(Movable):
         self.center = np.asarray(dict["center"])
 
         if self.filename != "":
-            self.qimage = QImage(self.filename)
-            filename_back = Fragment.searchBackFile(self.filename)
-            self.qimage_back = QImage(filename_back)
+            self.load_images(self.filename)
 
             self.prepareForDrawing()
 
