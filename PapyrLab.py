@@ -252,6 +252,18 @@ class PapyrLab(QMainWindow):
         self.labelMouseLeft = QLabel("x:")
         self.labelMouseTop = QLabel("y:")
 
+        self.sliderZoom = QSlider(Qt.Horizontal)
+        self.sliderZoom.setFocusPolicy(Qt.StrongFocus)
+        self.sliderZoom.setFixedWidth(180)
+        self.sliderZoom.setStyleSheet(slider_style2)
+        self.sliderZoom.setMinimum(1)
+        self.sliderZoom.setMaximum(9)
+        self.sliderZoom.setValue(4)
+        self.sliderZoom.setSingleStep(1)
+        self.sliderZoom.setTickInterval(1)
+        self.sliderZoom.valueChanged[int].connect(self.sliderZoomChanged)
+        self.zoom_levels = [5, 10, 25, 50, 100, 150, 200, 400, 800]
+
         self.labelZoomInfo = QLabel("100%")
         self.labelMouseLeftInfo = QLabel("0")
         self.labelMouseTopInfo = QLabel("0")
@@ -269,6 +281,7 @@ class PapyrLab(QMainWindow):
         layout_header.addWidget(self.checkBoxViewSynchronization)
         layout_header.addStretch()
         layout_header.addWidget(self.labelZoom)
+        layout_header.addWidget(self.sliderZoom)
         layout_header.addWidget(self.labelZoomInfo)
         layout_header.addWidget(self.labelMouseLeft)
         layout_header.addWidget(self.labelMouseLeftInfo)
@@ -841,8 +854,6 @@ class PapyrLab(QMainWindow):
 
             print(self.viewerplus.viewport().xL.max() + xR - xR.min() - xL())
             print(self.viewerplus.viewport().height())
-
-
             pass
 
         elif event.key() == Qt.Key_C:
@@ -879,6 +890,34 @@ class PapyrLab(QMainWindow):
         elif event.key() == Qt.Key_6:
             # ACTIVATE "EVALUATION" TOOL
             self.evaluation()
+
+        elif event.key() == Qt.Key_Plus:
+            # increase zoom factor
+            zf = self.viewerplus.zoom_factor
+            zf = zf + 0.1
+            self.viewerplus.setZoomFactor(zf)
+            if self.viewerplus2.isVisible():
+                self.viewerplus2.setZoomFactor(zf)
+
+            zf = self.viewerplus.zoom_factor
+            zf = int(round(zf * 100.0))
+            txt = "{:4d}%".format(zf)
+            self.labelZoomInfo.setText(txt)
+            self.updateZoomLevelSlider(zf)
+
+        elif event.key() == Qt.Key_Minus:
+            # decrease zoom factor
+            zf = self.viewerplus.zoom_factor
+            zf = zf - 0.1
+            self.viewerplus.setZoomFactor(zf)
+            if self.viewerplus2.isVisible():
+                self.viewerplus2.setZoomFactor(zf)
+
+            zf = self.viewerplus.zoom_factor
+            zf = int(round(zf * 100.0))
+            txt = "{:4d}%".format(zf)
+            self.labelZoomInfo.setText(txt)
+            self.updateZoomLevelSlider(zf)
 
         elif event.key() == Qt.Key_Q:
             tool = self.viewerplus.tools.tool
@@ -1022,6 +1061,19 @@ class PapyrLab(QMainWindow):
         if self.viewerplus2.isVisible():
             self.viewerplus2.applyTransparency(value)
 
+    @pyqtSlot(int)
+    def sliderZoomChanged(self, value):
+
+        zoom_factor = self.zoom_levels[value-1] / 100.0
+
+        # update zoom value
+        txt = "{:4d}%".format(self.zoom_levels[value-1])
+        self.labelZoomInfo.setText(txt)
+        self.viewerplus.setZoomFactor(zoom_factor)
+
+        if self.viewerplus2.isVisible():
+           self.viewerplus2.setZoomFactor(zoom_factor)
+
 
     @pyqtSlot()
     def updateViewInfo(self):
@@ -1031,13 +1083,14 @@ class PapyrLab(QMainWindow):
         (left, top) = self.viewerplus.clampCoords(topleft.x(), topleft.y())
         (right, bottom) = self.viewerplus.clampCoords(bottomright.x(), bottomright.y())
         zf = self.viewerplus.zoom_factor * 100.0
-        zoom = "{:6.0f}%".format(zf)
+        zoom = "{:4d}%".format(int(round(zf)))
         self.labelZoomInfo.setText(zoom)
+        self.updateZoomLevelSlider(int(round(zf)))
 
     @pyqtSlot(float, float)
     def updateMousePos(self, x, y):
         zf = self.viewerplus.zoom_factor * 100.0
-        zoom = "{:6.0f}%".format(zf)
+        zoom = "{:4d}%".format(int(round(zf)))
         left = "{:5d}".format(int(round(x)))
         top = "{:5d}".format(int(round(y)))
 
@@ -1045,6 +1098,25 @@ class PapyrLab(QMainWindow):
         self.labelMouseLeftInfo.setText(left)
         self.labelMouseTopInfo.setText(top)
 
+    def updateZoomLevelSlider(self, zf):
+
+        value = 0
+        n = len(self.zoom_levels)
+        if zf < self.zoom_levels[0]:
+            value = 0
+        elif self.zoom_levels[0] <= zf <= self.zoom_levels[n-1]:
+            min_dist = 10000000
+            for i in range(n):
+                dist = abs(self.zoom_levels[i] - zf)
+                if dist < min_dist:
+                    min_dist = dist
+                    value = i
+        if zf > self.zoom_levels[n-1]:
+            value = n-1
+
+        self.sliderZoom.blockSignals(True)
+        self.sliderZoom.setValue(value+1)
+        self.sliderZoom.blockSignals(False)
 
     def resetAll(self):
 

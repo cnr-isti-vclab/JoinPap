@@ -138,8 +138,8 @@ class QtImageViewerPlus(QGraphicsView):
 
         # zoom is always active
         self.zoom_factor = 1.0
-        self.ZOOM_FACTOR_MIN = 0.25
-        self.ZOOM_FACTOR_MAX = 16.0
+        self.ZOOM_FACTOR_MIN = 0.05
+        self.ZOOM_FACTOR_MAX = 8.0
 
         MIN_SIZE = 250
         self.viewport().setMinimumWidth(MIN_SIZE)
@@ -214,6 +214,26 @@ class QtImageViewerPlus(QGraphicsView):
         posy = self.verticalScrollBar().value()
         zoom = self.zoom_factor
         self.viewHasChanged.emit(posx, posy, zoom)
+
+    def setZoomFactor(self, zoomfactor):
+
+        if zoomfactor < self.ZOOM_FACTOR_MIN:
+            zoomfactor = self.ZOOM_FACTOR_MIN
+
+        if zoomfactor > self.ZOOM_FACTOR_MAX:
+            zoomfactor = self.ZOOM_FACTOR_MAX
+
+            # immagino che questo sia necessario nel caso ci sia il mirroring sull'altra vista
+            #self.reapplyTransforms()
+
+            # credo che questo sia necessario per zoomare la scena in modo centrato
+            #delta = self.mapToScene(view_pos) - self.mapToScene(self.viewport().rect().center())
+            #self.centerOn(scene_pos - delta)
+
+        self.blockSignals(True)
+        self.zoom_factor = zoomfactor
+        self.updateViewer()
+        self.blockSignals(False)
 
     def setViewParameters(self, posx, posy, zoomfactor):
 
@@ -726,7 +746,10 @@ class QtImageViewerPlus(QGraphicsView):
         width = self.scene.width()
         height = self.scene.height()
         if width > 0 and height > 0:
-            self.ZOOM_FACTOR_MIN = 0.25 * min(1.0 * self.width() / width, 1.0 * self.height() / height)
+            zoom_required = 0.25 * min(1.0 * self.width() / width, 1.0 * self.height() / height)
+#            if zoom_required < self.ZOOM_FACTOR_MIN:
+#                self.ZOOM_FACTOR_MIN = zoom_required
+
         self.updateViewer()
 
         event.accept()
