@@ -223,12 +223,18 @@ class QtImageViewerPlus(QGraphicsView):
         if zoomfactor > self.ZOOM_FACTOR_MAX:
             zoomfactor = self.ZOOM_FACTOR_MAX
 
-            # immagino che questo sia necessario nel caso ci sia il mirroring sull'altra vista
-            #self.reapplyTransforms()
+        # sembra che non ci sia bisogno..
+        #self.reapplyTransforms()
 
-            # credo che questo sia necessario per zoomare la scena in modo centrato
-            #delta = self.mapToScene(view_pos) - self.mapToScene(self.viewport().rect().center())
-            #self.centerOn(scene_pos - delta)
+        ref_pos = QPointF(self.scene.width() / 2.0, self.scene.height() / 2.0)
+        if len(self.selected_fragments) > 0:
+            bbox = self.selected_fragments[0]
+            ref_pos = QPointF((bbox[1] + bbox[2]) / 2.0, (bbox[0] + bbox[3]) / 2.0)
+
+        scene_pos = self.mapToScene(ref_pos)
+
+        delta = self.mapToScene(ref_pos) - self.mapToScene(self.viewport().rect().center())
+        self.centerOn(scene_pos - delta)
 
         self.blockSignals(True)
         self.zoom_factor = zoomfactor
@@ -607,11 +613,6 @@ class QtImageViewerPlus(QGraphicsView):
         """
 
         mods = event.modifiers()
-
-        if self.tools.tool == "WATERSHED" and mods & Qt.ShiftModifier:
-            self.tools.tools["WATERSHED"].scribbles.setScaleFactor(self.zoom_factor)
-            self.tools.wheel(event.angleDelta())
-            return
 
         if self.zoomEnabled:
 
