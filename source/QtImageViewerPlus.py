@@ -216,28 +216,20 @@ class QtImageViewerPlus(QGraphicsView):
         self.viewHasChanged.emit(posx, posy, zoom)
 
     def setZoomFactor(self, zoomfactor):
-
         if zoomfactor < self.ZOOM_FACTOR_MIN:
             zoomfactor = self.ZOOM_FACTOR_MIN
 
         if zoomfactor > self.ZOOM_FACTOR_MAX:
             zoomfactor = self.ZOOM_FACTOR_MAX
 
+        self.zoom_factor = zoomfactor
         # sembra che non ci sia bisogno..
         #self.reapplyTransforms()
 
-        ref_pos = QPointF(self.scene.width() / 2.0, self.scene.height() / 2.0)
         if len(self.selected_fragments) > 0:
-            bbox = self.selected_fragments[0]
-            ref_pos = QPointF((bbox[1] + bbox[2]) / 2.0, (bbox[0] + bbox[3]) / 2.0)
-
-        scene_pos = self.mapToScene(ref_pos)
-
-        delta = self.mapToScene(ref_pos) - self.mapToScene(self.viewport().rect().center())
-        self.centerOn(scene_pos - delta)
-
+            self.centerOn(self.selected_fragments[0].id_item)
+        
         self.blockSignals(True)
-        self.zoom_factor = zoomfactor
         self.updateViewer()
         self.blockSignals(False)
 
