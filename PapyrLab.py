@@ -52,6 +52,7 @@ from source.Project import Project
 from source.QtGridWidget import QtGridWidget
 from source.QtPanelInfo import QtPanelInfo
 from source.QtImageSetWidget import QtImageSetWidget
+from source.QtFragmentMatchingWidget import QtFragmentMatchingWidget
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -138,7 +139,7 @@ class PapyrLab(QMainWindow):
         self.btnMove               = self.newButton("move.png",    "Move/Rotate fragment",  flatbuttonstyle1, self.move)
         self.btnFreehand           = self.newButton("cross.png",  "Freehand border",       flatbuttonstyle1, self.freehand) # was pencil.png
         self.btnEditBorder         = self.newButton("cross.png",    "Edit border",           flatbuttonstyle1, self.editBorder) # was edit.png
-        self.btnEvaluation         = self.newButton("auto.png",    "Evaluate/suggest",      flatbuttonstyle2, self.evaluation)
+        self.btnFragmentMatcher         = self.newButton("auto.png",    "Evaluate/suggest",      flatbuttonstyle2, self.fragmentMatcher)
         self.btnRuler           = self.newButton("ruler.png",    "Ruler",             flatbuttonstyle1, self.ruler)
 
         # Split Screen operation removed from the toolbar
@@ -159,7 +160,7 @@ class PapyrLab(QMainWindow):
         layout_tools.addWidget(self.btnMove)
         # layout_tools.addWidget(self.btnFreehand)
         # layout_tools.addWidget(self.btnEditBorder)
-        layout_tools.addWidget(self.btnEvaluation)
+        layout_tools.addWidget(self.btnFragmentMatcher)
         layout_tools.addWidget(self.btnRuler)
         layout_tools.addSpacing(3)
         layout_tools.addWidget(self.labelSeparator)
@@ -888,8 +889,8 @@ class PapyrLab(QMainWindow):
             self.editBorder()
 
         elif event.key() == Qt.Key_6:
-            # ACTIVATE "EVALUATION" TOOL
-            self.evaluation()
+            # ACTIVATE "Fragment Matcher" TOOL
+            self.fragmentMatcher()
 
         elif event.key() == Qt.Key_Plus:
             # increase zoom factor
@@ -1159,7 +1160,6 @@ class PapyrLab(QMainWindow):
         self.btnFreehand.setChecked(False)
         self.btnCreateGrid.setChecked(False)
         self.btnGrid.setChecked(False)
-        self.btnEvaluation.setChecked(False)
 
     def setTool(self, tool):
         tools = {
@@ -1216,6 +1216,15 @@ class PapyrLab(QMainWindow):
         Activate the "EDITBORDER" tool.
         """
         self.setTool("EDITBORDER")
+
+    #pyqt slot
+    def fragmentMatcher(self):
+        # open the QtFragmentMatchingWidget
+        self.fragment_evaluation_widget = QtFragmentMatchingWidget()
+        self.fragment_evaluation_widget.setWindowModality(Qt.WindowModal)
+        self.fragment_evaluation_widget.show()
+
+        self.btnFragmentMatcher.setChecked(False)
 
     @pyqtSlot()
     def evaluation(self):
@@ -1297,7 +1306,7 @@ class PapyrLab(QMainWindow):
         self.viewerplus.drawFragment(fragR)
         self.viewerplus2.drawFragment(fragR)
 
-        self.btnEvaluation.setChecked(False)
+        self.btnFragmentMatcher.setChecked(False)
 
 
     @pyqtSlot()

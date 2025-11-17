@@ -195,6 +195,7 @@ install_requires = [
     'albumentations',
     'shapely',
     'rectangle-packer',
+    'h5py',
     'git+https://github.com/fabiocarrara/papyrus-matching.git',
 ]
 
