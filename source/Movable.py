@@ -38,6 +38,9 @@ class Movable(object):
         self.bbox[0] = newY
         self.bbox[1] = newX
 
+    def getBoundingBox(self):
+        return self.bbox
+
     def save(self):
         return NotImplementedError
     

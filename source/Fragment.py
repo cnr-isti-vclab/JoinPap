@@ -344,6 +344,23 @@ class Fragment(Movable):
                 transf.rotate(180)
             self.id_back_item.setTransform(transf)
 
+    def setVisible(self, visible, back=False):
+        if back:
+            if self.qpixmap_back_item is not None:
+                self.qpixmap_back_item.setVisible(visible)
+            if self.id_back_item is not None:
+                self.id_back_item.setVisible(visible)
+            if self.qpixmap_contour_back_item is not None:
+                self.qpixmap_contour_back_item.setVisible(visible)
+        else:
+            if self.qpixmap_item is not None:
+                self.qpixmap_item.setVisible(visible)
+            if self.id_item is not None:
+                self.id_item.setVisible(visible)
+            if self.qpixmap_contour_item is not None:
+                self.qpixmap_contour_item.setVisible(visible)
+
+
     def draw(self, scene, back=False, selected=False, border_enabled=True):
         view = scene.views()[0]
         zvalue_fragments = view.Z_VALUE_FRAGMENTS

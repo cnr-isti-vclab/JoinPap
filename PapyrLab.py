@@ -1220,7 +1220,7 @@ class PapyrLab(QMainWindow):
     #pyqt slot
     def fragmentMatcher(self):
         # open the QtFragmentMatchingWidget
-        self.fragment_evaluation_widget = QtFragmentMatchingWidget()
+        self.fragment_evaluation_widget = QtFragmentMatchingWidget(self.viewerplus)
         self.fragment_evaluation_widget.setWindowModality(Qt.WindowModal)
         self.fragment_evaluation_widget.show()
 
