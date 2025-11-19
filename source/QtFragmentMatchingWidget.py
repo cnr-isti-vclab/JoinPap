@@ -6,11 +6,11 @@ import numpy as np
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog,
-    QLabel, QAbstractItemView, QSpacerItem, QSizePolicy, QLineEdit, QCheckBox
+QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog,
+    QLabel, QAbstractItemView, QSpacerItem, QSizePolicy, QLineEdit, QCheckBox, QGraphicsEllipseItem
 )
 from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QBrush, QPen
 
 class QtFragmentMatchingWidget(QWidget):
     """
@@ -29,6 +29,9 @@ class QtFragmentMatchingWidget(QWidget):
         self.current_position_indices = {}
         self.current_solo_checked = {}
         self.current_flip_checked = {}
+
+        # List for containing matching points drawn on the screen
+        self.matching_points = []
 
         # --- Memorize initial fragment positions ---
         self.initial_fragment_positions = {}
@@ -50,11 +53,17 @@ class QtFragmentMatchingWidget(QWidget):
         # self.load_button = QPushButton("Change Results Folder")
         # self.load_button.setFixedWidth(120)
         # self.load_button.clicked.connect(self._load_results)
+
+        # --- Checkbox for showing points ---
+        show_matching_points = QCheckBox("Show Matching Points")
+        show_matching_points.setChecked(True)
+        show_matching_points.stateChanged[int].connect(self.change_matching_points_visibility)
         
-        # top_bar_layout = QHBoxLayout()
+        top_bar_layout = QHBoxLayout()
+        top_bar_layout.addWidget(show_matching_points)
         # top_bar_layout.addWidget(self.load_button)
-        # top_bar_layout.addStretch(1)
-        # main_layout.addLayout(top_bar_layout)
+        top_bar_layout.addStretch(1)
+        main_layout.addLayout(top_bar_layout)
 
         # --- Table ---
         self.table = QTableWidget()
@@ -93,6 +102,21 @@ class QtFragmentMatchingWidget(QWidget):
         # Connect bottom button events
         self.reset_button.clicked.connect(self._on_reset_all)
         self.ok_button.clicked.connect(self._on_ok_clicked)
+
+    @pyqtSlot(int)
+    def change_matching_points_visibility(self, visible):
+        """
+        Changes the visibility of the points provided in items_list.
+        
+        Args:
+            items_list (list): List of QGraphicsItem objects.
+            visible (bool): True to make visible, False to hide.
+        """
+        if not self.matching_points:
+            return
+
+        for item in self.matching_points:
+            item.setVisible(visible)
 
     @pyqtSlot()
     def _load_results(self, folder_path=None):
@@ -255,6 +279,7 @@ class QtFragmentMatchingWidget(QWidget):
 
         # First, reset all fragments to initial positions
         self._on_reset_all(reset_interface=False)
+        self._remove_matching_points()
 
         # select this row of the table, in case not already selected
         self.table.blockSignals(True)
@@ -309,7 +334,8 @@ class QtFragmentMatchingWidget(QWidget):
         else:
             pair = data['pair']
             rel_pos = precise_relative_position
-        self.preview_fragment_movement(row, pair, rel_pos)
+        self._preview_fragment_movement(row, pair, rel_pos)
+        self._draw_matching_points(pair, fine_scores, fine_a_coords)
         
         # --- Placeholder for "do other stuff" ---
         print("-" * 30)
@@ -322,6 +348,80 @@ class QtFragmentMatchingWidget(QWidget):
         # print(f"  > Fine A Coords: {fine_a_coords}")
         # print(f"  > Fine B Coords: {fine_b_coords}")
         print("-" * 30)
+
+    def _draw_matching_points(self, pair, fine_scores, fine_a_coords):
+        """
+        Draws points on the qgraphicview based on coordinates and scores.
+        
+        Args:
+            qgraphicview (QGraphicsView): The view containing the scene to draw on.
+            fine_scores (array-like): Shape [N], scores determining color.
+            fine_a_coords (array-like): Shape [N, 2], (x, y) coordinates.
+            
+        Returns:
+            list: A list of QGraphicsItem objects that were added to the scene.
+        """
+        scene = self.viewerplus.scene
+        self.matching_points = []
+        
+        # Point radius
+        radius = 30
+        diameter = radius * 2
+
+        # Iterate through scores and coords simultaneously
+        for score, (y, x) in zip(fine_scores, fine_a_coords):
+            
+            # Determine color based on score thresholds
+            if score > 0.7:
+                color = Qt.yellow
+            elif score > 0.4:
+                color = Qt.cyan
+            else:
+                color = Qt.black
+
+            # Compute scene coordinates
+            frag_a_name, _ = pair
+            frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
+            y_frag, x_frag = frag_a.getBoundingBox()[:2]
+
+            x = x + x_frag
+            y = y + y_frag
+
+            # Create the point (Ellipse)
+            # x and y are usually center points, so we offset by radius to center the circle
+            point_item = QGraphicsEllipseItem(x - radius, y - radius, diameter, diameter)
+            
+            # Set the fill color (Brush)
+            point_item.setBrush(QBrush(color))
+            
+            # Set the border (Pen). 
+            # Using NoPen makes them look like solid dots. 
+            # If you want a border, use QPen(Qt.black, 1)
+            point_item.setPen(QPen(Qt.NoPen))
+
+            # Set Z-value to ensure points are drawn on top of other elements
+            point_item.setZValue(100)
+            
+            # Add to scene and tracking list
+            scene.addItem(point_item)
+            self.matching_points.append(point_item)
+        
+
+    def _remove_matching_points(self):
+        """
+        Removes the specific points provided in items_list from the view's scene.
+        """
+        scene = self.viewerplus.scene
+        if scene is None or not self.matching_points:
+            return
+
+        for item in self.matching_points:
+            # Check if the item is actually in the scene before trying to remove
+            if item.scene() == scene:
+                scene.removeItem(item)
+        
+        # Clear the python list reference
+        self.matching_points = []
         
     @pyqtSlot()
     def _on_row_selected(self):
@@ -445,7 +545,7 @@ class QtFragmentMatchingWidget(QWidget):
         """Placeholder: Called when 'Ok' button is clicked."""
         self.close()
 
-    def preview_fragment_movement(self, row, pair, position_coords):
+    def _preview_fragment_movement(self, row, pair, position_coords):
         """
         Previews the movement of fragments based on the selected position.
         
@@ -482,5 +582,6 @@ class QtFragmentMatchingWidget(QWidget):
         if event.spontaneous():
             # if click on close icon, reset all positions before closing
             self._on_reset_all()
+        self._remove_matching_points()
         event.accept()
         
