@@ -389,8 +389,8 @@ class PapyrLab(QMainWindow):
         self.settings_widget.working_area_settings.workingAreaPenChanged[str, int].connect(self.viewerplus2.setWorkingAreaPen)
 
         # views synchronization
-        self.viewerplus.viewHasChanged[float, float, float].connect(self.viewerplus2.setViewParameters)
-        self.viewerplus2.viewHasChanged[float, float, float].connect(self.viewerplus.setViewParameters)
+        self.viewerplus.viewHasChanged[float, float, float, float, float, float, float].connect(self.viewerplus2.setViewParameters)
+        self.viewerplus2.viewHasChanged[float, float, float, float, float, float, float].connect(self.viewerplus.setViewParameters)
 
         self.viewerplus.customContextMenuRequested.connect(self.openContextMenu)
         self.viewerplus2.customContextMenuRequested.connect(self.openContextMenu)
@@ -434,14 +434,14 @@ class PapyrLab(QMainWindow):
         if self.checkBoxViewSynchronization.isChecked():
 
             try:
-                self.viewerplus.viewHasChanged[float, float, float].connect(self.viewerplus2.setViewParameters, type=Qt.UniqueConnection)
-                self.viewerplus2.viewHasChanged[float, float, float].connect(self.viewerplus.setViewParameters, type=Qt.UniqueConnection)
+                self.viewerplus.viewHasChanged[float, float, float, float, float, float, float].connect(self.viewerplus2.setViewParameters, type=Qt.UniqueConnection)
+                self.viewerplus2.viewHasChanged[float, float, float, float, float, float, float].connect(self.viewerplus.setViewParameters, type=Qt.UniqueConnection)
             except:
                 pass
         else:
 
-            self.viewerplus.viewHasChanged[float, float, float].disconnect()
-            self.viewerplus2.viewHasChanged[float, float, float].disconnect()
+            self.viewerplus.viewHasChanged[float, float, float, float, float, float, float].disconnect()
+            self.viewerplus2.viewHasChanged[float, float, float, float, float, float, float].disconnect()
 
 
     def setGuiPreferences(self):
