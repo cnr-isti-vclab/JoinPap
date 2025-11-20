@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
 QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog,
     QLabel, QAbstractItemView, QSpacerItem, QSizePolicy, QLineEdit, QCheckBox, QGraphicsEllipseItem
 )
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot, QSettings
 from PyQt5.QtGui import QFont, QBrush, QPen
 
 class QtFragmentMatchingWidget(QWidget):
@@ -42,7 +42,9 @@ class QtFragmentMatchingWidget(QWidget):
         self._init_ui()
 
         # --- Load initial results ---
-        self._load_results(folder_path="ai_data/merged")
+        self.settings = QSettings("VCLAB-AIMH", "PIUI")
+        folder_path = self.settings.value("matching-fragments-path", defaultValue="ai_data_dgx")
+        self._load_results(folder_path=folder_path)
 
     def _init_ui(self):
         """Initializes all UI components."""
@@ -50,9 +52,9 @@ class QtFragmentMatchingWidget(QWidget):
         main_layout = QVBoxLayout(self)
 
         # --- Top Button ---
-        # self.load_button = QPushButton("Change Results Folder")
-        # self.load_button.setFixedWidth(120)
-        # self.load_button.clicked.connect(self._load_results)
+        self.load_button = QPushButton("Pick Folder")
+        self.load_button.setFixedWidth(120)
+        self.load_button.clicked.connect(self._load_results)
 
         # --- Checkbox for showing points ---
         show_matching_points = QCheckBox("Show Matching Points")
@@ -60,8 +62,8 @@ class QtFragmentMatchingWidget(QWidget):
         show_matching_points.stateChanged[int].connect(self.change_matching_points_visibility)
         
         top_bar_layout = QHBoxLayout()
+        top_bar_layout.addWidget(self.load_button)
         top_bar_layout.addWidget(show_matching_points)
-        # top_bar_layout.addWidget(self.load_button)
         top_bar_layout.addStretch(1)
         main_layout.addLayout(top_bar_layout)
 
@@ -124,20 +126,27 @@ class QtFragmentMatchingWidget(QWidget):
         Opens a dialog to select the 'merged' results folder and populates
         the table with data from all HDF5 files found.
         """
-        if not folder_path or not Path(folder_path).is_dir():
-            folder_path = QFileDialog.getExistingDirectory(self, "Select Merged Results Folder")
-        
-        if not folder_path:
-            return
+        hdf5_files_found = folder_path and (Path(folder_path) / "merged").is_dir()
+        while not hdf5_files_found:
+            folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder")
+            if folder_path == "":
+                self.close()
+                return
 
-        print(f"Loading results from: {folder_path}")
-        
+            print(f"Loading results from: {folder_path}")
+            
+            hdf5_files = glob.glob(os.path.join(folder_path, "merged", "*.hdf5"))
+            print(f"Found {len(hdf5_files)} HDF5 files.")
+            hdf5_files_found = len(hdf5_files) > 0
+
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        hdf5_files = glob.glob(os.path.join(folder_path, "merged", "*.hdf5"))
+        # Set this folder to be used from this point on in successive sessions
+        self.settings.setValue("matching-fragments-path", folder_path)
+
         # Clear existing data
         self.table.setRowCount(0)
         self.pair_data = []
-        
-        hdf5_files = glob.glob(os.path.join(folder_path, "*.hdf5"))
-        print(f"Found {len(hdf5_files)} HDF5 files.")
 
         loaded_fragments_names = [Path(f.filename).stem for f in self.project.fragments]
         loaded_data = []
@@ -192,6 +201,9 @@ class QtFragmentMatchingWidget(QWidget):
         
         # Now that all data is loaded, populate the table
         self._populate_table()
+
+        # Restore cursor
+        QApplication.restoreOverrideCursor()
 
     def _populate_table(self):
         """Fills the QTableWidget with data loaded into self.pair_data."""
@@ -331,11 +343,13 @@ class QtFragmentMatchingWidget(QWidget):
         if self.current_flip_checked[row]:
             pair = data['pair'][::-1]
             rel_pos = -precise_relative_position
+            fine_coords = fine_b_coords
         else:
             pair = data['pair']
             rel_pos = precise_relative_position
+            fine_coords = fine_a_coords
         self._preview_fragment_movement(row, pair, rel_pos)
-        self._draw_matching_points(pair, fine_scores, fine_a_coords)
+        self._draw_matching_points(pair, fine_scores, fine_coords)
         
         # --- Placeholder for "do other stuff" ---
         print("-" * 30)
