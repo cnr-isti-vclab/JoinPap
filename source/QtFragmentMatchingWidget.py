@@ -3,6 +3,7 @@ import os
 import glob
 import h5py
 import numpy as np
+import pandas as pd
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
@@ -76,8 +77,8 @@ class QtFragmentMatchingWidget(QWidget):
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Interactive)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents) # Solo
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents) # Flip
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents) # Apply
@@ -166,6 +167,7 @@ class QtFragmentMatchingWidget(QWidget):
 
                     # 2. Read and process sum_scores_grid
                     sum_scores_grid = f['sum_scores_grid'][:]
+                    grid_to_tid = f['grid_to_translation_id_recto'][:] # Use this for grouping
                     if sum_scores_grid.size == 0:
                         print(f"Skipping {file_path} (empty sum_scores_grid)")
                         continue
@@ -173,8 +175,18 @@ class QtFragmentMatchingWidget(QWidget):
                     glob_score = np.max(sum_scores_grid)
                     
                     # 3. Get sorted indices and scores (as per logic)
-                    sorted_indices_desc = np.argsort(sum_scores_grid.ravel())[::-1]
-                    sorted_scores_desc = sum_scores_grid.ravel()[sorted_indices_desc]
+                    df_agg = pd.DataFrame({
+                        'score': sum_scores_grid.ravel(),
+                        'translation_id': grid_to_tid.ravel()
+                    })
+                    
+                    # Group by T_ID and calculate the max score for all grid points
+                    # mapped to that T_ID.
+                    aggregated_scores = df_agg.groupby('translation_id')['score'].max()
+                    
+                    # Sort the unique T_IDs based on their aggregated mean score
+                    sorted_agg_t_ids = aggregated_scores.sort_values(ascending=False).index.to_numpy()
+                    sorted_agg_scores = aggregated_scores.sort_values(ascending=False).to_numpy()
                     
                     # 4. Store all data needed for interaction
                     data_dict = {
@@ -182,8 +194,8 @@ class QtFragmentMatchingWidget(QWidget):
                         "file_path": file_path,
                         "pair_name": pair_name,
                         "glob_score": glob_score,
-                        "sorted_indices_desc": sorted_indices_desc,
-                        "sorted_scores_desc": sorted_scores_desc,
+                        "sorted_agg_t_ids": sorted_agg_t_ids,
+                        "sorted_agg_scores": sorted_agg_scores,
                         "grid": f['grid'][:],
                         "grid_to_translation_id_recto": f['grid_to_translation_id_recto'][:],
                         "translation_ids_recto": f['translation_ids_recto'][:],
@@ -226,7 +238,7 @@ class QtFragmentMatchingWidget(QWidget):
             self.current_solo_checked[row_index] = False # Default solo unchecked
             self.current_flip_checked[row_index] = False # Default flip unchecked
 
-            initial_score = data['sorted_scores_desc'][0]
+            initial_score = data['sorted_agg_scores'][0]
             
             pos_widget = QWidget()
             pos_layout = QHBoxLayout(pos_widget)
@@ -307,7 +319,7 @@ class QtFragmentMatchingWidget(QWidget):
         current_pos_idx = self.current_position_indices[row]
         
         # Calculate and clamp new index
-        max_idx = len(data['sorted_scores_desc']) - 1
+        max_idx = len(data['sorted_agg_scores']) - 1
         new_pos_idx = max(0, min(current_pos_idx + direction, max_idx))
 
         if new_pos_idx == current_pos_idx and (direction == -1 and new_pos_idx == 0 or direction == 1 and new_pos_idx == max_idx):
@@ -317,22 +329,17 @@ class QtFragmentMatchingWidget(QWidget):
         self.current_position_indices[row] = new_pos_idx
         
         # --- Update UI ---
-        new_score = data['sorted_scores_desc'][new_pos_idx]
+        new_score = data['sorted_agg_scores'][new_pos_idx]
         container = self.table.cellWidget(row, 2)
         score_label = container.layout().itemAt(1).widget()
         score_label.setText(f"{new_score:.3f}")
 
         # --- Execute Core Logic ---
-        # 1. Get the index from the sorted list
-        sorted_grid_index = data['sorted_indices_desc'][new_pos_idx]
         
-        # 2. Find the coordinates from the grid
-        position_coords = data['grid'][sorted_grid_index]
+        # Find the original translation_id using the reverse map
+        translation_id = data['sorted_agg_t_ids'][new_pos_idx]
         
-        # 3. Find the original translation_id using the reverse map
-        translation_id = data['grid_to_translation_id_recto'][sorted_grid_index]
-        
-        # 4. Find all original data for that translation_id
+        # Find all original data for that translation_id
         mask = (data['translation_ids_recto'] == translation_id)
         
         fine_scores = data['scores_recto'][mask]
@@ -350,18 +357,6 @@ class QtFragmentMatchingWidget(QWidget):
             fine_coords = fine_a_coords
         self._preview_fragment_movement(row, pair, rel_pos)
         self._draw_matching_points(pair, fine_scores, fine_coords)
-        
-        # --- Placeholder for "do other stuff" ---
-        print("-" * 30)
-        print(f"Row {row} | Position {new_pos_idx+1} / {max_idx+1}")
-        print(f"  > Grid Score: {new_score:.4f}")
-        print(f"  > Position (y,x): {position_coords}")
-        print(f"  > Mapped Translation ID: {translation_id}")
-        print(f"  > Found {len(fine_scores)} fine-grained patches for this T_ID.")
-        # print(f"  > Fine Scores: {fine_scores}")
-        # print(f"  > Fine A Coords: {fine_a_coords}")
-        # print(f"  > Fine B Coords: {fine_b_coords}")
-        print("-" * 30)
 
     def _draw_matching_points(self, pair, fine_scores, fine_a_coords):
         """
