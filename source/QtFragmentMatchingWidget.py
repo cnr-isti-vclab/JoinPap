@@ -1,7 +1,6 @@
 import sys
 import os
 import glob
-import h5py
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -127,6 +126,7 @@ class QtFragmentMatchingWidget(QWidget):
         Opens a dialog to select the 'merged' results folder and populates
         the table with data from all HDF5 files found.
         """
+        import h5py # TODO: move out, this is for avoiding that python crashes if h5py is not installed
         hdf5_files_found = folder_path and (Path(folder_path) / "merged").is_dir()
         while not hdf5_files_found:
             folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder")
