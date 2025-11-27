@@ -51,7 +51,7 @@ class QtImageViewerPlus(QGraphicsView):
     selectionChanged = pyqtSignal()
     selectionReset = pyqtSignal()
     viewUpdated = pyqtSignal(QRectF)                    # region visible in percentage
-    viewHasChanged = pyqtSignal(float, float, float, float, float, float, float)    # posx, posy, minx, maxx, miny, maxy, posz
+    viewHasChanged = pyqtSignal(float, float, float, float, float, float, float, bool)    # posx, posy, minx, maxx, miny, maxy, posz, rotated
 
     # custom signal
     updateInfoPanel = pyqtSignal(Fragment)
@@ -217,7 +217,7 @@ class QtImageViewerPlus(QGraphicsView):
         miny = self.verticalScrollBar().minimum()
         maxy = self.verticalScrollBar().maximum()
         zoom = self.zoom_factor
-        self.viewHasChanged.emit(posx, posy, minx, maxx, miny, maxy, zoom)
+        self.viewHasChanged.emit(posx, posy, minx, maxx, miny, maxy, zoom, self.rotated)
 
     def setZoomFactor(self, zoomfactor):
         if zoomfactor < self.ZOOM_FACTOR_MIN:
@@ -237,7 +237,7 @@ class QtImageViewerPlus(QGraphicsView):
         self.updateViewer()
         self.blockSignals(False)
 
-    def setViewParameters(self, posx, posy, minx, maxx, miny, maxy, zoomfactor):
+    def setViewParameters(self, posx, posy, minx, maxx, miny, maxy, zoomfactor, rotated):
 
         self.blockSignals(True)
         
@@ -253,7 +253,7 @@ class QtImageViewerPlus(QGraphicsView):
         else:
             actual_minx = self.horizontalScrollBar().minimum()
             actual_miny = self.verticalScrollBar().minimum()
-            if not self.rotated:
+            if rotated:
                 self.horizontalScrollBar().setValue(int(posx))
                 self.verticalScrollBar().setValue(int(actual_miny+(maxy - posy)))
             else:
