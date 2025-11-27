@@ -58,13 +58,13 @@ class QtFragmentMatchingWidget(QWidget):
         self.load_button.clicked.connect(self._load_results)
 
         # --- Checkbox for showing points ---
-        show_matching_points = QCheckBox("Show Matching Points")
-        show_matching_points.setChecked(True)
-        show_matching_points.stateChanged[int].connect(self.change_matching_points_visibility)
+        self.show_matching_points = QCheckBox("Show Matching Points")
+        self.show_matching_points.setChecked(True)
+        self.show_matching_points.stateChanged[int].connect(self._change_matching_points_visibility)
         
         top_bar_layout = QHBoxLayout()
         top_bar_layout.addWidget(self.load_button)
-        top_bar_layout.addWidget(show_matching_points)
+        top_bar_layout.addWidget(self.show_matching_points)
         top_bar_layout.addStretch(1)
         main_layout.addLayout(top_bar_layout)
 
@@ -108,7 +108,7 @@ class QtFragmentMatchingWidget(QWidget):
         self.ok_button.clicked.connect(self._on_ok_clicked)
 
     @pyqtSlot(int)
-    def change_matching_points_visibility(self, visible):
+    def _change_matching_points_visibility(self, visible):
         """
         Changes the visibility of the points provided in items_list.
         
@@ -116,10 +116,14 @@ class QtFragmentMatchingWidget(QWidget):
             items_list (list): List of QGraphicsItem objects.
             visible (bool): True to make visible, False to hide.
         """
+        self._update_matching_points_visibility()
+
+    def _update_matching_points_visibility(self):
         if not self.matching_points:
             return
 
         for item in self.matching_points:
+            visible = self.show_matching_points.isChecked()
             item.setVisible(visible)
 
     @pyqtSlot()
@@ -421,6 +425,8 @@ class QtFragmentMatchingWidget(QWidget):
             # Add to scene and tracking list
             scene.addItem(point_item)
             self.matching_points.append(point_item)
+
+        self._update_matching_points_visibility()
         
 
     def _remove_matching_points(self):
@@ -485,11 +491,13 @@ class QtFragmentMatchingWidget(QWidget):
                 else:
                     frag.setVisible(True)
                     frag.setVisible(True, back=True)
+                frag.enableIds(self.viewerplus.ids_enabled)
         else:
             # Show all fragments
             for frag in self.project.fragments:
                 frag.setVisible(True)
                 frag.setVisible(True, back=True)
+                frag.enableIds(self.viewerplus.ids_enabled)
 
     @pyqtSlot(int, int)
     def _on_solo_changed(self, row, state):
@@ -596,6 +604,7 @@ class QtFragmentMatchingWidget(QWidget):
         for frag in self.project.fragments:
             frag.setVisible(True)
             frag.setVisible(True, back=True)
+            frag.enableIds(self.viewerplus.ids_enabled)
         if event.spontaneous():
             # if click on close icon, reset all positions before closing
             self._on_reset_all()

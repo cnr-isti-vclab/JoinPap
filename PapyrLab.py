@@ -246,6 +246,7 @@ class PapyrLab(QMainWindow):
         self.rotateVerso.stateChanged[int].connect(self.saveGuiPreferences)
 
         self.checkBoxViewSynchronization = QCheckBox("Synchronization")
+        self.checkBoxViewSynchronization.setChecked(True)
         self.checkBoxViewSynchronization.stateChanged[int].connect(self.toggleViewSynchronization)
         self.checkBoxViewSynchronization.stateChanged[int].connect(self.saveGuiPreferences)
 
@@ -1182,6 +1183,7 @@ class PapyrLab(QMainWindow):
         Activate the "pan" tool.
         """
         self.setTool("PAN")
+        self.btnFragmentMatcher.setDisabled(False)
 
     @pyqtSlot()
     def move(self):
@@ -1189,6 +1191,7 @@ class PapyrLab(QMainWindow):
         Activate the "move" tool.
         """
         self.setTool("MOVE")
+        self.btnFragmentMatcher.setDisabled(True)
 
     @pyqtSlot()
     def ruler(self):
@@ -1221,6 +1224,7 @@ class PapyrLab(QMainWindow):
     #pyqt slot
     def fragmentMatcher(self):
         self.btnFragmentMatcher.setChecked(True)
+        self.btnMove.setDisabled(True)
         # open the QtFragmentMatchingWidget
         if self.fragment_evaluation_widget:
             # bring it to foreground
@@ -1234,6 +1238,7 @@ class PapyrLab(QMainWindow):
     def _on_fragment_window_closed(self):
         self.btnFragmentMatcher.setChecked(False)
         self.fragment_evaluation_widget = None
+        self.btnMove.setDisabled(False)
      
     @pyqtSlot()
     def toggleSplitScreen(self):
