@@ -69,18 +69,19 @@ class QtFragmentMatchingWidget(QWidget):
 
         # --- Table ---
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Pairs", "Glob score", "Positioning", "Solo", "Flip A<->B", "Apply"])
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels(["Rank", "Pairs", "Glob score", "Positioning", "Solo", "Flip A<->B", "Apply"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents) # Solo
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents) # Flip
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents) # Apply
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents) # Solo
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents) # Flip
+        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents) # Apply
         
         self.table.setMinimumSize(1000, 300)
         self.table.verticalHeader().setVisible(False)
@@ -222,18 +223,23 @@ class QtFragmentMatchingWidget(QWidget):
         self.table.setRowCount(len(self.pair_data))
         
         for row_index, data in enumerate(self.pair_data):
-            # --- Cell 0: Pairs ---
+            # --- Cell 0: Row Index ---
+            row_index_item = QTableWidgetItem(str(row_index+1))
+            row_index_item.setFlags(row_index_item.flags() & ~Qt.ItemIsEditable)
+            self.table.setItem(row_index, 0, row_index_item)
+
+            # --- Cell 1: Pairs ---
             pair_item = QTableWidgetItem(data['pair_name'])
             pair_item.setFlags(pair_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row_index, 0, pair_item)
+            self.table.setItem(row_index, 1, pair_item)
 
-            # --- Cell 1: Glob score ---
+            # --- Cell 2: Glob score ---
             score_item = QTableWidgetItem(f"{data['glob_score']:.3f}")
             score_item.setFlags(score_item.flags() & ~Qt.ItemIsEditable)
             score_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_index, 1, score_item)
+            self.table.setItem(row_index, 2, score_item)
 
-            # --- Cell 2: Positioning (Widget) ---
+            # --- Cell 3: Positioning (Widget) ---
             self.current_position_indices[row_index] = 0 # Default to top score
             self.current_solo_checked[row_index] = False # Default solo unchecked
             self.current_flip_checked[row_index] = False # Default flip unchecked
@@ -264,9 +270,9 @@ class QtFragmentMatchingWidget(QWidget):
             pos_layout.addWidget(score_label)
             pos_layout.addWidget(right_arrow)
             
-            self.table.setCellWidget(row_index, 2, pos_widget)
+            self.table.setCellWidget(row_index, 3, pos_widget)
             
-            # --- Cell 3: Solo (Checkbox) ---
+            # --- Cell 4: Solo (Checkbox) ---
             solo_checkbox = QCheckBox()
             solo_widget = QWidget()
             solo_layout = QHBoxLayout(solo_widget)
@@ -274,9 +280,9 @@ class QtFragmentMatchingWidget(QWidget):
             solo_layout.setContentsMargins(0, 0, 0, 0)
             solo_widget.setLayout(solo_layout)
             solo_checkbox.stateChanged.connect(lambda state, r=row_index: self._on_solo_changed(r, state))
-            self.table.setCellWidget(row_index, 3, solo_widget)
+            self.table.setCellWidget(row_index, 4, solo_widget)
 
-            # --- Cell 4: Flip A<->B (Checkbox) ---
+            # --- Cell 5: Flip A<->B (Checkbox) ---
             flip_checkbox = QCheckBox()
             flip_widget = QWidget()
             flip_layout = QHBoxLayout(flip_widget)
@@ -284,12 +290,12 @@ class QtFragmentMatchingWidget(QWidget):
             flip_layout.setContentsMargins(0, 0, 0, 0)
             flip_widget.setLayout(flip_layout)
             flip_checkbox.stateChanged.connect(lambda state, r=row_index: self._on_flip_changed(r, state))
-            self.table.setCellWidget(row_index, 4, flip_widget)
+            self.table.setCellWidget(row_index, 5, flip_widget)
             
-            # --- Cell 5: Apply (Button) ---
+            # --- Cell 6: Apply (Button) ---
             apply_button = QPushButton("Apply")
             apply_button.clicked.connect(lambda _, r=row_index: self._on_apply_clicked(r))
-            self.table.setCellWidget(row_index, 5, apply_button)
+            self.table.setCellWidget(row_index, 6, apply_button)
 
     @pyqtSlot(int, int)
     def _on_position_change(self, row, direction):
@@ -312,7 +318,7 @@ class QtFragmentMatchingWidget(QWidget):
 
         # Re-enable apply button
         if direction != 0:
-            apply_button = self.table.cellWidget(row, 5)
+            apply_button = self.table.cellWidget(row, 6)
             apply_button.setEnabled(True)
 
         data = self.pair_data[row]
@@ -322,15 +328,15 @@ class QtFragmentMatchingWidget(QWidget):
         max_idx = len(data['sorted_agg_scores']) - 1
         new_pos_idx = max(0, min(current_pos_idx + direction, max_idx))
 
-        if new_pos_idx == current_pos_idx and (direction == -1 and new_pos_idx == 0 or direction == 1 and new_pos_idx == max_idx):
-             print(f"Row {row}: Reached end of scores.")
-             return # No change
+        # if new_pos_idx == current_pos_idx and (direction == -1 and new_pos_idx == 0 or direction == 1 and new_pos_idx == max_idx):
+        #      print(f"Row {row}: Reached end of scores.")
+        #      return # No change
 
         self.current_position_indices[row] = new_pos_idx
         
         # --- Update UI ---
         new_score = data['sorted_agg_scores'][new_pos_idx]
-        container = self.table.cellWidget(row, 2)
+        container = self.table.cellWidget(row, 3)
         score_label = container.layout().itemAt(1).widget()
         score_label.setText(f"{new_score:.3f}")
 
@@ -499,7 +505,7 @@ class QtFragmentMatchingWidget(QWidget):
         for r in range(len(self.current_solo_checked)):
             if r != row:
                 self.current_solo_checked[r] = False
-                solo_widget = self.table.cellWidget(r, 3)
+                solo_widget = self.table.cellWidget(r, 4)
                 solo_checkbox = solo_widget.layout().itemAt(0).widget()
                 solo_checkbox.blockSignals(True)
                 solo_checkbox.setChecked(False)
@@ -536,14 +542,14 @@ class QtFragmentMatchingWidget(QWidget):
             # also reset all solo and flip checkboxes
             for row in range(len(self.current_solo_checked)):
                 self.current_solo_checked[row] = False
-                solo_widget = self.table.cellWidget(row, 3)
+                solo_widget = self.table.cellWidget(row, 4)
                 solo_checkbox = solo_widget.layout().itemAt(0).widget()
                 solo_checkbox.blockSignals(True)
                 solo_checkbox.setChecked(False)
                 solo_checkbox.blockSignals(False)
 
                 self.current_flip_checked[row] = False
-                flip_widget = self.table.cellWidget(row, 4)
+                flip_widget = self.table.cellWidget(row, 5)
                 flip_checkbox = flip_widget.layout().itemAt(0).widget()
                 flip_checkbox.blockSignals(True)
                 flip_checkbox.setChecked(False)
@@ -579,6 +585,7 @@ class QtFragmentMatchingWidget(QWidget):
         frag_b.setPosition(final_x, final_y)
         self.viewerplus.drawFragment(frag_b)
         self.viewerplus.fragmentPositionChanged()
+        self.viewerplus.centerOn(frag_a.center[0], frag_a.center[1])
 
         self._update_frag_visibility(row)
 
