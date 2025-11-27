@@ -428,7 +428,8 @@ class PapyrLab(QMainWindow):
         self.viewerplus2.setProject(self.project)
         self.pan()
 
-        #self.viewerplus.autoZoom()
+        # fragment matcher initially closed
+        self.fragment_evaluation_widget = None
 
     def toggleViewSynchronization(self):
 
@@ -1219,96 +1220,21 @@ class PapyrLab(QMainWindow):
 
     #pyqt slot
     def fragmentMatcher(self):
+        self.btnFragmentMatcher.setChecked(True)
         # open the QtFragmentMatchingWidget
-        self.fragment_evaluation_widget = QtFragmentMatchingWidget(self.viewerplus)
-        self.fragment_evaluation_widget.setWindowModality(Qt.WindowModal)
-        self.fragment_evaluation_widget.show()
+        if self.fragment_evaluation_widget:
+            # bring it to foreground
+            self.fragment_evaluation_widget.activateWindow()
+        else:
+            self.fragment_evaluation_widget = QtFragmentMatchingWidget(self.viewerplus, on_close_callback=self._on_fragment_window_closed)
+            self.fragment_evaluation_widget.setWindowModality(Qt.WindowModal)
+            self.fragment_evaluation_widget.setWindowFlags(Qt.WindowStaysOnTopHint)
+            self.fragment_evaluation_widget.show()
 
+    def _on_fragment_window_closed(self):
         self.btnFragmentMatcher.setChecked(False)
-
-    @pyqtSlot()
-    def evaluation(self):
-        """
-        Run the evaluation / suggestion
-        """
-        print('evaluate!')
-
-        if len(self.viewerplus.selected_fragments) != 2:
-            print("Must have exactly 2 fragments selected", file=sys.stderr)
-            return
-
-        # this goes at top with imports
-        from papyrus_matching import FragmentMatcher
-        # this goes at init
-        matcher = FragmentMatcher(min_availability=0.4)
-
-        # evaluation start
-        fragL, fragR = self.viewerplus.selected_fragments
-
-        if fragL.center[0] > fragR.center[0]:
-            fragL, fragR = fragR, fragL
-
-        # WARNING: left and right are swapped when working in the back
-        backR = fragL.getImageBack().copy()
-        backL = fragR.getImageBack().copy()
-
-        # posL and posR are array of (y,x) coordinates of top-left points of the analyzed patches
-        posL, posR, scored_displacements, scoresLR = matcher.match(backL, backR)
-
-        """ get the displacement with highest score """
-        ranked_displacements = sorted(scored_displacements, key=lambda x: x[1], reverse=True)
-        dy, score = ranked_displacements[0]
-
-        """ get displacement with highest smoothed score
-        # 3-deg polynomial approx. of matching score vs vertical displacement
-        xs, ys = zip(*scored_displacements)
-        z = np.polyfit(xs, ys, 3)
-        smooth_score = np.poly1d(z)
-        crit = smooth_score.deriv().r
-        r_crit = crit[crit.imag == 0].real
-        test = smooth_score.deriv(2)(r_crit)
-
-        x_max = r_crit[test < 0]
-        y_max = smooth_score(x_max)
-
-        dy = x_max
-        score = y_max
-        """
-
-        numL = len(posL)
-        numR = len(posR)
-
-        maxMatches = min(numL, numR, numL+dy, numR-dy)
-        if maxMatches <= 1:
-            # TODO: understand why this happens. This is to temporarily avoid a potential crash
-            print("No matches found with these fragments", file=sys.stderr)
-            return
-        xL = posL[min(dy, 0):min(dy, 0) + maxMatches][1]
-        xR = posR[max(dy, 0):max(dy, 0) + maxMatches][1]
-
-        widthL = backL.shape[1]
-        # dx estimated from patch positions and min_availability
-        dx = (xR - xL).min() + xL.max() - xR.min() - 2 * (1 - matcher.min_availability) * matcher.patch_size
-        dy *= matcher.stride
-
-        print(f'Best match is dY = {dy}px with score {score}')
-        print(f'{dx=}')
-
-        # here we should visualize the output somehow
-        # e.g., place the two fragments one next to the other with a vertical displacement of dy.
-        top1, left1, width1, right1 = fragL.bbox
-        top2, left2, width2, right2 = fragR.bbox
-
-        newX = left1 + width1 + dx
-        newY = top1 + dy
-
-        fragR.setPosition(newX, newY)
-        self.viewerplus.drawFragment(fragR)
-        self.viewerplus2.drawFragment(fragR)
-
-        self.btnFragmentMatcher.setChecked(False)
-
-
+        self.fragment_evaluation_widget = None
+     
     @pyqtSlot()
     def toggleSplitScreen(self):
         if self.split_screen_flag is True:

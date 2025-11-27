@@ -17,10 +17,11 @@ class QtFragmentMatchingWidget(QWidget):
     A PyQt5 widget to browse and analyze merged fragment matching results
     from HDF5 files, based on the provided mocap.
     """
-    def __init__(self, viewerplus, parent=None):
+    def __init__(self, viewerplus, on_close_callback=None, parent=None):
         super().__init__(parent)
         self.viewerplus = viewerplus
         self.project = viewerplus.project
+        self.on_close_callback = on_close_callback
         
         # --- Data Storage ---
         # Stores data from HDF5 files (one dict per row)
@@ -599,5 +600,7 @@ class QtFragmentMatchingWidget(QWidget):
             # if click on close icon, reset all positions before closing
             self._on_reset_all()
         self._remove_matching_points()
+        if self.on_close_callback:
+            self.on_close_callback()
         event.accept()
         
