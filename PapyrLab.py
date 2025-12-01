@@ -92,7 +92,7 @@ class PapyrLab(QMainWindow):
         self.papyrlab_dir = os.getcwd()
 
         current_version = "0.2"
-        self.PAPYRLAB_VERSION = "PapyrLab " + current_version
+        self.PAPYRLAB_VERSION = "JoinPap " + current_version
 
         print(self.PAPYRLAB_VERSION)
 
@@ -602,12 +602,12 @@ class PapyrLab(QMainWindow):
         setWorkingAreaAct.setStatusTip("Define the area where to assemble the fragments")
         setWorkingAreaAct.triggered.connect(self.openWorkingAreaWidget)
 
-        addFolderAct = QAction("Add Image Folder", self)
+        addFolderAct = QAction("Add Fragments Folder", self)
         addFolderAct.setShortcut('Ctrl+F')
         addFolderAct.setStatusTip("Add the images contained in a given folder to the project")
         addFolderAct.triggered.connect(self.addFolder)
 
-        addImagesAct = QAction("Add Images", self)
+        addImagesAct = QAction("Add Fragments", self)
         addImagesAct.setShortcut('Ctrl+I')
         addImagesAct.setStatusTip("Add one or more images to the project")
         addImagesAct.triggered.connect(self.addImages)
@@ -640,7 +640,7 @@ class PapyrLab(QMainWindow):
         helpAct.setStatusTip("Help")
         helpAct.triggered.connect(self.help)
 
-        aboutAct = QAction("About PapyrLab", self)
+        aboutAct = QAction("About JoinPap", self)
         aboutAct.triggered.connect(self.about)
 
         menubar = QMenuBar(self)
@@ -1540,7 +1540,7 @@ class PapyrLab(QMainWindow):
         content = QLabel()
         content.setTextFormat(Qt.RichText)
 
-        txt = "<b>PapyrLab</b> is an AI-empowered interactive fragments re-assembly tool, " \
+        txt = "<b>JoinPap</b> is an AI-empowered interactive fragments re-assembly tool, " \
               "specifically targeted to recompose papyrus' fragments.".format(self.PAPYRLAB_VERSION)
 
         content.setWordWrap(True)
