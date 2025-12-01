@@ -45,6 +45,7 @@ class QtFragmentMatchingWidget(QWidget):
         self.matching_points_recto = []
         self.matching_points_verso = []
         self.current_side = "Both" # Tracks current selection in dropdown
+        self.settings = QSettings("VCLAB-AIMH", "PapyrLab")
 
         # --- Memorize initial fragment positions ---
         self.initial_fragment_positions = {}
@@ -55,7 +56,6 @@ class QtFragmentMatchingWidget(QWidget):
         self._init_ui()
 
         # --- Load initial results ---
-        self.settings = QSettings("VCLAB-AIMH", "PIUI")
         folder_path = self.settings.value("matching-fragments-path", defaultValue="ai_data_dgx")
         self._load_results(folder_path=folder_path)
 
@@ -63,6 +63,10 @@ class QtFragmentMatchingWidget(QWidget):
         """Initializes all UI components."""
         self.setWindowTitle("Matching Fragments")
         main_layout = QVBoxLayout(self)
+
+        # Current loaded folder
+        self.current_folder_label = QLabel("Current folder: {}".format(self.settings.value("matching-fragments-path")))
+        main_layout.addWidget(self.current_folder_label)
 
         # --- Top Bar Controls ---
         self.load_button = QPushButton("Pick Folder")
@@ -198,10 +202,7 @@ class QtFragmentMatchingWidget(QWidget):
         
         # Loop until a valid folder is selected or cancelled
         while not hdf5_files_found:
-            QApplication.setOverrideCursor(Qt.ArrowCursor) # Restore arrow cursor for dialog
-            folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder (Containing 'merged' subdir)")
-            QApplication.setOverrideCursor(Qt.WaitCursor) # Set wait cursor for processing
-            
+            folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder (Containing 'merged' subdir)")            
             if not folder_path:
                 QApplication.restoreOverrideCursor()
                 self.close()
@@ -217,6 +218,7 @@ class QtFragmentMatchingWidget(QWidget):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         hdf5_files = glob.glob(str(merged_path / "*.hdf5"))
         self.settings.setValue("matching-fragments-path", str(resolved_path))
+        self.current_folder_label.setText(str(resolved_path))
 
         # Clear existing data
         self.table.setRowCount(0)

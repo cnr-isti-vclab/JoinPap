@@ -440,7 +440,7 @@ class QtSettingsWidget(QWidget):
     def __init__(self, taglab_dir, parent=None):
         super(QtSettingsWidget, self).__init__(parent)
 
-        self.settings = QSettings("VCLAB-AIMH", "PIUI")
+        self.settings = QSettings("VCLAB-AIMH", "PapyrLab")
 
         self.setStyleSheet("background-color: rgb(40,40,40); color: white")
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
