@@ -8,7 +8,7 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog, QComboBox,
-    QLabel, QAbstractItemView, QCheckBox, QGraphicsEllipseItem
+    QLabel, QAbstractItemView, QCheckBox, QGraphicsEllipseItem, QGraphicsView
 )
 from PyQt5.QtCore import Qt, pyqtSlot, QSettings
 from PyQt5.QtGui import QBrush, QPen
@@ -30,9 +30,10 @@ class QtFragmentMatchingWidget(QWidget):
     COL_FLIP = 7
     COL_APPLY = 8
 
-    def __init__(self, viewerplus, on_close_callback=None, parent=None):
+    def __init__(self, viewerplus, viewerplus_back, on_close_callback=None, parent=None):
         super().__init__(parent)
         self.viewerplus = viewerplus
+        self.viewerplus_back = viewerplus_back
         self.project = viewerplus.project
         self.on_close_callback = on_close_callback
         
@@ -41,7 +42,8 @@ class QtFragmentMatchingWidget(QWidget):
         self.current_position_indices = {}
         self.current_solo_checked = {}
         self.current_flip_checked = {}
-        self.matching_points = []
+        self.matching_points_recto = []
+        self.matching_points_verso = []
         self.current_side = "Both" # Tracks current selection in dropdown
 
         # --- Memorize initial fragment positions ---
@@ -71,7 +73,7 @@ class QtFragmentMatchingWidget(QWidget):
         self.show_matching_points.setChecked(True)
         self.show_matching_points.stateChanged[int].connect(self._change_matching_points_visibility)
 
-        side_dropdown_label = QLabel("Order by Side:")
+        side_dropdown_label = QLabel("Sort by Side:")
         self.side_dropdown = QComboBox()
         self.side_dropdown.addItems(["Both", "Recto", "Verso"])
         self.side_dropdown.setCurrentText("Both")
@@ -86,7 +88,6 @@ class QtFragmentMatchingWidget(QWidget):
         main_layout.addLayout(top_bar_layout)
 
         # --- Table ---
-        # **MODIFIED: Increased column count to 9**
         self.table = QTableWidget()
         self.table.setColumnCount(9) 
         self.table.setHorizontalHeaderLabels([
@@ -142,11 +143,15 @@ class QtFragmentMatchingWidget(QWidget):
 
     def _update_matching_points_visibility(self):
         """Iterates through and updates visibility of drawn points."""
-        if not self.matching_points:
+        if not self.matching_points_recto and not self.matching_points_verso:
             return
 
-        for item in self.matching_points:
-            visible = self.show_matching_points.isChecked()
+        visible = self.show_matching_points.isChecked()
+        
+        for item in self.matching_points_recto:
+            item.setVisible(visible)
+            
+        for item in self.matching_points_verso:
             item.setVisible(visible)
 
     @pyqtSlot(str)
@@ -287,12 +292,19 @@ class QtFragmentMatchingWidget(QWidget):
                             "Verso": {"t_ids": verso_t_ids, "scores": verso_scores},
                         },
                         
-                        # Raw data needed for lookup
+                        # Raw data needed for lookup (Recto)
                         "translation_ids_recto": f['translation_ids_recto'][:],
                         "a_coords_recto": f['a_coords_recto'][:],
                         "b_coords_recto": f['b_coords_recto'][:],
                         "t_relatives_recto": f['t_relatives_recto'][:],
-                        "scores_recto": f['scores_recto'][:]
+                        "scores_recto": f['scores_recto'][:],
+                        
+                        # Raw data needed for lookup (Verso)
+                        "translation_ids_verso": f['translation_ids_verso'][:],
+                        "a_coords_verso": f['a_coords_verso'][:],
+                        "b_coords_verso": f['b_coords_verso'][:],
+                        "t_relatives_verso": f['t_relatives_verso'][:],
+                        "scores_verso": f['scores_verso'][:],
                     }
                     loaded_data.append(data_dict)
                     
@@ -308,8 +320,6 @@ class QtFragmentMatchingWidget(QWidget):
     def _populate_table(self):
         """Fills the QTableWidget with data loaded into self.pair_data."""
         self.table.setRowCount(len(self.pair_data))
-        
-        # Determine current sort order to set the Rank column
         
         for row_index, data in enumerate(self.pair_data):
             # --- Cell 0: Rank ---
@@ -345,7 +355,6 @@ class QtFragmentMatchingWidget(QWidget):
             self.current_solo_checked[row_index] = False
             self.current_flip_checked[row_index] = False
             
-            # **MODIFIED: Use score from the currently selected side for initial display**
             initial_score = data['agg_data'][self.current_side]['scores'][0]
             
             pos_widget = QWidget()
@@ -430,7 +439,8 @@ class QtFragmentMatchingWidget(QWidget):
         current_pos_idx = self.current_position_indices.get(row, 0)
         
         # Get the positioning data based on the current side selected in the dropdown
-        agg_data = data['agg_data'][self.current_side]
+        # TODO: (see comment below) - as of now this makes sense only for Both, unless we find a way to draw recto and verso separately
+        agg_data = data['agg_data']["Both"]
         sorted_agg_t_ids = agg_data['t_ids']
         sorted_agg_scores = agg_data['scores']
         
@@ -452,32 +462,68 @@ class QtFragmentMatchingWidget(QWidget):
         translation_id = sorted_agg_t_ids[new_pos_idx]
         
         # 2. Find all original data for that translation_id
-        mask = (data['translation_ids_recto'] == translation_id)
+        mask_recto = (data['translation_ids_recto'] == translation_id)
+        mask_verso = (data['translation_ids_verso'] == translation_id) # Using same T_ID for verso lookup
         
-        fine_scores = data['scores_recto'][mask]
-        fine_a_coords = data['a_coords_recto'][mask]
-        fine_b_coords = data['b_coords_recto'][mask]
-        precise_relative_position = data['t_relatives_recto'][mask][0]
+        # Recto data
+        fine_scores_r = data['scores_recto'][mask_recto]
+        fine_a_coords_r = data['a_coords_recto'][mask_recto]
+        fine_b_coords_r = data['b_coords_recto'][mask_recto]
+        precise_relative_position = data['t_relatives_recto'][mask_recto][0]
 
-        # 3. Apply fragment movement and draw points
+        # Verso data
+        fine_scores_v = data['scores_verso'][mask_verso]
+        fine_a_coords_v = data['a_coords_verso'][mask_verso]
+        fine_b_coords_v = data['b_coords_verso'][mask_verso]
+
+
+        # 3. Apply fragment movement
         if self.current_flip_checked.get(row, False):
             pair = data['pair'][::-1]
             rel_pos = -precise_relative_position
-            fine_coords = fine_b_coords
+            fine_coords_r = fine_b_coords_r # Drawing B coords on Frag A
+            fine_coords_v = fine_b_coords_v
         else:
             pair = data['pair']
             rel_pos = precise_relative_position
-            fine_coords = fine_a_coords
+            fine_coords_r = fine_a_coords_r # Drawing A coords on Frag A
+            fine_coords_v = fine_a_coords_v
             
         self._preview_fragment_movement(row, pair, rel_pos)
-        self._draw_matching_points(pair, fine_scores, fine_coords)
 
-    def _draw_matching_points(self, pair, fine_scores, fine_a_coords):
+        # 4. Draw points
+        self._draw_matching_points(
+            viewer=self.viewerplus, 
+            pair=pair, 
+            fine_scores=fine_scores_r, 
+            fine_coords=fine_coords_r, 
+            point_list=self.matching_points_recto
+        )
+        # TODO: as of now, the above call visualizes matchings for recto or verso on the recto view, depending on the item selected on the dropdown.
+        # Instead, the recto view should visualize only recto matchings and verso only verso ones. 
+        # To do this, I should find the verso translation nearer to the recto one.
+        # self._draw_matching_points(
+        #     viewer=self.viewerplus_back, 
+        #     pair=pair, 
+        #     fine_scores=fine_scores_v, 
+        #     fine_coords=fine_coords_v, 
+        #     point_list=self.matching_points_verso
+        # )
+
+    def _draw_matching_points(self, viewer: QGraphicsView, pair, fine_scores, fine_coords, point_list: list):
         """
-        Draws points on the scene based on coordinates and scores.
+        Draws points on the scene based on coordinates and scores for a specific viewer.
+        
+        Args:
+            viewer (QGraphicsView): The viewer containing the scene to draw on.
+            pair (tuple): The (FragA, FragB) pair names.
+            fine_scores (array-like): Scores determining color.
+            fine_coords (array-like): (x, y) coordinates relative to FragA.
+            point_list (list): List to store the created QGraphicsItem objects.
         """
-        scene = self.viewerplus.scene
-        self.matching_points = []
+        scene = viewer.scene
+        # Clear existing points from the tracking list
+        point_list.clear() 
         
         radius = 30
         diameter = radius * 2
@@ -485,12 +531,13 @@ class QtFragmentMatchingWidget(QWidget):
         frag_a_name, _ = pair
         frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
         
-        if not frag_a: return
+        if not frag_a or fine_scores.size == 0: return
 
         # Get frag_a's current scene position to convert local coordinates to scene coordinates
-        y_frag_scene, x_frag_scene = frag_a.getBoundingBox()[:2]
+        # NOTE: Position is stored as (y, x) in bounding box
+        y_frag_scene, x_frag_scene = frag_a.getBoundingBox()[:2] 
 
-        for score, (y_local, x_local) in zip(fine_scores, fine_a_coords):
+        for score, (y_local, x_local) in zip(fine_scores, fine_coords):
             
             # Determine color based on score thresholds
             if score > 0.7:
@@ -511,24 +558,27 @@ class QtFragmentMatchingWidget(QWidget):
             point_item.setZValue(100)
             
             scene.addItem(point_item)
-            self.matching_points.append(point_item)
+            point_list.append(point_item)
 
         self._update_matching_points_visibility()
         
 
     def _remove_matching_points(self):
         """
-        Removes all tracking points from the scene.
+        Removes all tracking points from both the recto and verso scenes.
         """
-        scene = self.viewerplus.scene
-        if scene is None or not self.matching_points:
-            return
-
-        for item in self.matching_points:
-            if item.scene() == scene:
-                scene.removeItem(item)
         
-        self.matching_points = []
+        def remove_from_scene(point_list, scene):
+            if scene is None or not point_list:
+                return
+            for item in point_list:
+                if item.scene() == scene:
+                    scene.removeItem(item)
+            point_list.clear()
+
+        # Remove points from both viewers
+        remove_from_scene(self.matching_points_recto, self.viewerplus.scene)
+        remove_from_scene(self.matching_points_verso, self.viewerplus_back.scene)
         
     @pyqtSlot()
     def _on_row_selected(self):
@@ -536,7 +586,6 @@ class QtFragmentMatchingWidget(QWidget):
         selected_rows = self.table.selectionModel().selectedRows()
         if selected_rows:
             selected_row_index = selected_rows[0].row()
-            # 0 means no change, just to trigger positioning and visualization updates
             self._on_position_change(selected_row_index, 0) 
 
     @pyqtSlot(int)
@@ -575,7 +624,7 @@ class QtFragmentMatchingWidget(QWidget):
                 
                 frag.setVisible(is_in_pair)
                 frag.setVisible(is_in_pair, back=True)
-                frag.enableIds(self.viewerplus.ids_enabled)
+                frag.enableIds(self.viewerplus.ids_enabled and is_in_pair)
         else:
             for frag in self.project.fragments:
                 frag.setVisible(True)

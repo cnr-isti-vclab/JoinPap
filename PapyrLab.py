@@ -1230,7 +1230,7 @@ class PapyrLab(QMainWindow):
             # bring it to foreground
             self.fragment_evaluation_widget.activateWindow()
         else:
-            self.fragment_evaluation_widget = QtFragmentMatchingWidget(self.viewerplus, on_close_callback=self._on_fragment_window_closed)
+            self.fragment_evaluation_widget = QtFragmentMatchingWidget(self.viewerplus, self.viewerplus2, on_close_callback=self._on_fragment_window_closed)
             self.fragment_evaluation_widget.setWindowModality(Qt.WindowModal)
             self.fragment_evaluation_widget.setWindowFlags(Qt.WindowStaysOnTopHint)
             self.fragment_evaluation_widget.show()
