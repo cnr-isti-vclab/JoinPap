@@ -3,20 +3,33 @@ import os
 import glob
 import numpy as np
 import pandas as pd
+import h5py
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog,
-    QLabel, QAbstractItemView, QSpacerItem, QSizePolicy, QLineEdit, QCheckBox, QGraphicsEllipseItem
+    QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog, QComboBox,
+    QLabel, QAbstractItemView, QCheckBox, QGraphicsEllipseItem
 )
 from PyQt5.QtCore import Qt, pyqtSlot, QSettings
-from PyQt5.QtGui import QFont, QBrush, QPen
+from PyQt5.QtGui import QBrush, QPen
 
 class QtFragmentMatchingWidget(QWidget):
     """
     A PyQt5 widget to browse and analyze merged fragment matching results
-    from HDF5 files, based on the provided mocap.
+    from HDF5 files.
     """
+    
+    # Define Column Indices for clarity
+    COL_RANK = 0
+    COL_PAIRS = 1
+    COL_GLOB_SCORE = 2
+    COL_RECTO_SCORE = 3
+    COL_VERSO_SCORE = 4
+    COL_POSITIONING = 5
+    COL_SOLO = 6
+    COL_FLIP = 7
+    COL_APPLY = 8
+
     def __init__(self, viewerplus, on_close_callback=None, parent=None):
         super().__init__(parent)
         self.viewerplus = viewerplus
@@ -24,15 +37,12 @@ class QtFragmentMatchingWidget(QWidget):
         self.on_close_callback = on_close_callback
         
         # --- Data Storage ---
-        # Stores data from HDF5 files (one dict per row)
         self.pair_data = [] 
-        # Stores the current sorted index for the positioning arrows (one per row)
         self.current_position_indices = {}
         self.current_solo_checked = {}
         self.current_flip_checked = {}
-
-        # List for containing matching points drawn on the screen
         self.matching_points = []
+        self.current_side = "Both" # Tracks current selection in dropdown
 
         # --- Memorize initial fragment positions ---
         self.initial_fragment_positions = {}
@@ -52,44 +62,56 @@ class QtFragmentMatchingWidget(QWidget):
         self.setWindowTitle("Matching Fragments")
         main_layout = QVBoxLayout(self)
 
-        # --- Top Button ---
+        # --- Top Bar Controls ---
         self.load_button = QPushButton("Pick Folder")
         self.load_button.setFixedWidth(120)
-        self.load_button.clicked.connect(self._load_results)
+        self.load_button.clicked.connect(self._load_results_dialog)
 
-        # --- Checkbox for showing points ---
         self.show_matching_points = QCheckBox("Show Matching Points")
         self.show_matching_points.setChecked(True)
         self.show_matching_points.stateChanged[int].connect(self._change_matching_points_visibility)
+
+        side_dropdown_label = QLabel("Order by Side:")
+        self.side_dropdown = QComboBox()
+        self.side_dropdown.addItems(["Both", "Recto", "Verso"])
+        self.side_dropdown.setCurrentText("Both")
+        self.side_dropdown.currentTextChanged.connect(self._on_side_changed)
         
         top_bar_layout = QHBoxLayout()
         top_bar_layout.addWidget(self.load_button)
         top_bar_layout.addWidget(self.show_matching_points)
         top_bar_layout.addStretch(1)
+        top_bar_layout.addWidget(side_dropdown_label)
+        top_bar_layout.addWidget(self.side_dropdown)
         main_layout.addLayout(top_bar_layout)
 
         # --- Table ---
+        # **MODIFIED: Increased column count to 9**
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["Rank", "Pairs", "Glob score", "Positioning", "Solo", "Flip A<->B", "Apply"])
+        self.table.setColumnCount(9) 
+        self.table.setHorizontalHeaderLabels([
+            "Rank", "Pairs", "Glob score", "Recto score", "Verso score", 
+            "Positioning", "Solo", "Flip A<->B", "Apply"
+        ])
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents) # Solo
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents) # Flip
-        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents) # Apply
+        # Column Resizing setup
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_RANK, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_PAIRS, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_GLOB_SCORE, QHeaderView.Interactive)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_RECTO_SCORE, QHeaderView.Interactive)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_VERSO_SCORE, QHeaderView.Interactive)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_POSITIONING, QHeaderView.Interactive)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_SOLO, QHeaderView.Interactive)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_FLIP, QHeaderView.Interactive)
+        self.table.horizontalHeader().setSectionResizeMode(self.COL_APPLY, QHeaderView.Interactive)
         
         self.table.setMinimumSize(1000, 300)
         self.table.verticalHeader().setVisible(False)
         
-        # Connect table selection event
         self.table.itemSelectionChanged.connect(self._on_row_selected)
-        
         main_layout.addWidget(self.table)
 
         # --- Bottom Buttons ---
@@ -103,22 +125,23 @@ class QtFragmentMatchingWidget(QWidget):
         
         main_layout.addLayout(bottom_button_layout)
         
-        # Connect bottom button events
         self.reset_button.clicked.connect(self._on_reset_all)
         self.ok_button.clicked.connect(self._on_ok_clicked)
 
+    @pyqtSlot()
+    def _load_results_dialog(self):
+        """Wrapper to open file dialog and load results."""
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder")
+        if folder_path:
+            self._load_results(folder_path=folder_path)
+
     @pyqtSlot(int)
     def _change_matching_points_visibility(self, visible):
-        """
-        Changes the visibility of the points provided in items_list.
-        
-        Args:
-            items_list (list): List of QGraphicsItem objects.
-            visible (bool): True to make visible, False to hide.
-        """
+        """Changes the visibility of the matching points."""
         self._update_matching_points_visibility()
 
     def _update_matching_points_visibility(self):
+        """Iterates through and updates visibility of drawn points."""
         if not self.matching_points:
             return
 
@@ -126,30 +149,69 @@ class QtFragmentMatchingWidget(QWidget):
             visible = self.show_matching_points.isChecked()
             item.setVisible(visible)
 
+    @pyqtSlot(str)
+    def _on_side_changed(self, value):
+        """
+        Handler for side dropdown. Re-sorts the pair_data 
+        and updates the table display and positioning logic.
+        """
+        self.current_side = value
+        print(f"Side selected for sorting and positioning: {value}")
+        
+        # 1. Determine the key for sorting
+        if value == "Both":
+            sort_key = 'glob_score'
+        elif value == "Recto":
+            sort_key = 'max_recto_score'
+        elif value == "Verso":
+            sort_key = 'max_verso_score'
+        
+        # 2. Re-sort the internal data structure
+        self.pair_data = sorted(self.pair_data, key=lambda x: x.get(sort_key, 0.0), reverse=True)
+        
+        # 3. Re-populate the table based on the new order
+        self._populate_table()
+        
+        # 4. Reset positioning index for the selected row to 0 (best score in new order)
+        selected_rows = self.table.selectionModel().selectedRows()
+        if selected_rows:
+            row_index = selected_rows[0].row()
+            self._on_position_change(row_index, 0) # Refresh the selected row to show the top score
+
     @pyqtSlot()
     def _load_results(self, folder_path=None):
         """
-        Opens a dialog to select the 'merged' results folder and populates
-        the table with data from all HDF5 files found.
+        Loads merged HDF5 files from the specified folder.
         """
-        import h5py # TODO: move out, this is for avoiding that python crashes if h5py is not installed
-        hdf5_files_found = folder_path and (Path(folder_path) / "merged").is_dir()
+        import h5py # Dependency guard
+        
+        # Check if folder exists and contains merged/
+        resolved_path = Path(folder_path) if folder_path else Path("")
+        merged_path = resolved_path / "merged"
+        
+        hdf5_files_found = merged_path.is_dir() and len(glob.glob(str(merged_path / "*.hdf5"))) > 0
+        
+        # Loop until a valid folder is selected or cancelled
         while not hdf5_files_found:
-            folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder")
-            if folder_path == "":
+            QApplication.setOverrideCursor(Qt.ArrowCursor) # Restore arrow cursor for dialog
+            folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder (Containing 'merged' subdir)")
+            QApplication.setOverrideCursor(Qt.WaitCursor) # Set wait cursor for processing
+            
+            if not folder_path:
+                QApplication.restoreOverrideCursor()
                 self.close()
                 return
 
-            print(f"Loading results from: {folder_path}")
+            resolved_path = Path(folder_path)
+            merged_path = resolved_path / "merged"
+            hdf5_files_found = merged_path.is_dir() and len(glob.glob(str(merged_path / "*.hdf5"))) > 0
             
-            hdf5_files = glob.glob(os.path.join(folder_path, "merged", "*.hdf5"))
-            print(f"Found {len(hdf5_files)} HDF5 files.")
-            hdf5_files_found = len(hdf5_files) > 0
+            if not hdf5_files_found:
+                print(f"Folder '{folder_path}' does not contain a 'merged' subdirectory with HDF5 files.")
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        hdf5_files = glob.glob(os.path.join(folder_path, "merged", "*.hdf5"))
-        # Set this folder to be used from this point on in successive sessions
-        self.settings.setValue("matching-fragments-path", folder_path)
+        hdf5_files = glob.glob(str(merged_path / "*.hdf5"))
+        self.settings.setValue("matching-fragments-path", str(resolved_path))
 
         # Clear existing data
         self.table.setRowCount(0)
@@ -171,39 +233,61 @@ class QtFragmentMatchingWidget(QWidget):
                     
                     pair_name = f"{frag_a} ↔ {frag_b}"
 
-                    # 2. Read and process sum_scores_grid
+                    # 2. Read all score grids and T_ID mapping
                     sum_scores_grid = f['sum_scores_grid'][:]
-                    grid_to_tid = f['grid_to_translation_id_recto'][:] # Use this for grouping
+                    scores_grid = f['scores_grid'][:]
+                    scores_grid_back = f['scores_grid_back'][:]
+                    grid_to_tid = f['grid_to_translation_id_recto'][:] 
+                    
                     if sum_scores_grid.size == 0:
                         print(f"Skipping {file_path} (empty sum_scores_grid)")
                         continue
                         
+                    # Global (Both) scores
                     glob_score = np.max(sum_scores_grid)
                     
-                    # 3. Get sorted indices and scores (as per logic)
-                    df_agg = pd.DataFrame({
-                        'score': sum_scores_grid.ravel(),
-                        'translation_id': grid_to_tid.ravel()
-                    })
+                    # Recto/Verso Max scores for display and sorting
+                    max_recto_score = np.max(scores_grid)
+                    max_verso_score = np.max(scores_grid_back)
+
+                    # --- Aggregation Logic (Now for Both, Recto, and Verso) ---
                     
-                    # Group by T_ID and calculate the max score for all grid points
-                    # mapped to that T_ID.
-                    aggregated_scores = df_agg.groupby('translation_id')['score'].max()
+                    def aggregate_scores(scores_flat, grid_t_id):
+                        df_agg = pd.DataFrame({'score': scores_flat.ravel(), 'translation_id': grid_t_id.ravel()})
+                        agg_scores = df_agg.groupby('translation_id')['score'].max() # Use max for positioning
+                        
+                        sorted_agg_t_ids = agg_scores.sort_values(ascending=False).index.to_numpy()
+                        sorted_agg_scores = agg_scores.sort_values(ascending=False).to_numpy()
+                        return sorted_agg_t_ids, sorted_agg_scores
+                        
+                    # Both (Sum)
+                    both_t_ids, both_scores = aggregate_scores(sum_scores_grid, grid_to_tid)
                     
-                    # Sort the unique T_IDs based on their aggregated mean score
-                    sorted_agg_t_ids = aggregated_scores.sort_values(ascending=False).index.to_numpy()
-                    sorted_agg_scores = aggregated_scores.sort_values(ascending=False).to_numpy()
+                    # Recto
+                    recto_t_ids, recto_scores = aggregate_scores(scores_grid, grid_to_tid)
+                    
+                    # Verso
+                    verso_t_ids, verso_scores = aggregate_scores(scores_grid_back, grid_to_tid)
                     
                     # 4. Store all data needed for interaction
                     data_dict = {
                         "pair": (frag_a, frag_b),
                         "file_path": file_path,
                         "pair_name": pair_name,
+                        
+                        # Display Scores
                         "glob_score": glob_score,
-                        "sorted_agg_t_ids": sorted_agg_t_ids,
-                        "sorted_agg_scores": sorted_agg_scores,
-                        "grid": f['grid'][:],
-                        "grid_to_translation_id_recto": f['grid_to_translation_id_recto'][:],
+                        "max_recto_score": max_recto_score,
+                        "max_verso_score": max_verso_score,
+                        
+                        # Positioning/Sorting Data (Grouped by Side)
+                        "agg_data": {
+                            "Both": {"t_ids": both_t_ids, "scores": both_scores},
+                            "Recto": {"t_ids": recto_t_ids, "scores": recto_scores},
+                            "Verso": {"t_ids": verso_t_ids, "scores": verso_scores},
+                        },
+                        
+                        # Raw data needed for lookup
                         "translation_ids_recto": f['translation_ids_recto'][:],
                         "a_coords_recto": f['a_coords_recto'][:],
                         "b_coords_recto": f['b_coords_recto'][:],
@@ -215,59 +299,69 @@ class QtFragmentMatchingWidget(QWidget):
             except Exception as e:
                 print(f"Error loading {file_path}: {e}")
 
+        # Initial sort by global score ("Both")
         self.pair_data = sorted(loaded_data, key=lambda x: x['glob_score'], reverse=True)
         
-        # Now that all data is loaded, populate the table
         self._populate_table()
-
-        # Restore cursor
         QApplication.restoreOverrideCursor()
 
     def _populate_table(self):
         """Fills the QTableWidget with data loaded into self.pair_data."""
         self.table.setRowCount(len(self.pair_data))
         
+        # Determine current sort order to set the Rank column
+        
         for row_index, data in enumerate(self.pair_data):
-            # --- Cell 0: Row Index ---
+            # --- Cell 0: Rank ---
             row_index_item = QTableWidgetItem(str(row_index+1))
             row_index_item.setFlags(row_index_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row_index, 0, row_index_item)
+            self.table.setItem(row_index, self.COL_RANK, row_index_item)
 
             # --- Cell 1: Pairs ---
             pair_item = QTableWidgetItem(data['pair_name'])
             pair_item.setFlags(pair_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row_index, 1, pair_item)
+            self.table.setItem(row_index, self.COL_PAIRS, pair_item)
 
             # --- Cell 2: Glob score ---
             score_item = QTableWidgetItem(f"{data['glob_score']:.3f}")
             score_item.setFlags(score_item.flags() & ~Qt.ItemIsEditable)
             score_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_index, 2, score_item)
+            self.table.setItem(row_index, self.COL_GLOB_SCORE, score_item)
+            
+            # --- Cell 3: Recto Score ---
+            recto_score_item = QTableWidgetItem(f"{data['max_recto_score']:.3f}")
+            recto_score_item.setFlags(recto_score_item.flags() & ~Qt.ItemIsEditable)
+            recto_score_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row_index, self.COL_RECTO_SCORE, recto_score_item)
+            
+            # --- Cell 4: Verso Score ---
+            verso_score_item = QTableWidgetItem(f"{data['max_verso_score']:.3f}")
+            verso_score_item.setFlags(verso_score_item.flags() & ~Qt.ItemIsEditable)
+            verso_score_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row_index, self.COL_VERSO_SCORE, verso_score_item)
 
-            # --- Cell 3: Positioning (Widget) ---
-            self.current_position_indices[row_index] = 0 # Default to top score
-            self.current_solo_checked[row_index] = False # Default solo unchecked
-            self.current_flip_checked[row_index] = False # Default flip unchecked
-
-            initial_score = data['sorted_agg_scores'][0]
+            # --- Cell 5: Positioning (Widget) ---
+            self.current_position_indices[row_index] = 0
+            self.current_solo_checked[row_index] = False
+            self.current_flip_checked[row_index] = False
+            
+            # **MODIFIED: Use score from the currently selected side for initial display**
+            initial_score = data['agg_data'][self.current_side]['scores'][0]
             
             pos_widget = QWidget()
             pos_layout = QHBoxLayout(pos_widget)
-            pos_layout.setContentsMargins(5, 0, 5, 0) # Add some spacing
+            pos_layout.setContentsMargins(5, 0, 5, 0)
             pos_layout.setSpacing(10)
 
             left_arrow = QPushButton("<")
             right_arrow = QPushButton(">")
             score_label = QLabel(f"{initial_score:.3f}")
             
-            # Set fixed widths for consistent look
             left_arrow.setFixedWidth(30)
             right_arrow.setFixedWidth(30)
             score_label.setFixedWidth(50)
             score_label.setAlignment(Qt.AlignCenter)
 
-            # Connect signals using lambda to pass row and direction
-            # Per user request: Left arrow = next (+1), Right arrow = previous (-1)
             left_arrow.clicked.connect(lambda _, r=row_index: self._on_position_change(r, +1))
             right_arrow.clicked.connect(lambda _, r=row_index: self._on_position_change(r, -1))
 
@@ -275,9 +369,9 @@ class QtFragmentMatchingWidget(QWidget):
             pos_layout.addWidget(score_label)
             pos_layout.addWidget(right_arrow)
             
-            self.table.setCellWidget(row_index, 3, pos_widget)
+            self.table.setCellWidget(row_index, self.COL_POSITIONING, pos_widget)
             
-            # --- Cell 4: Solo (Checkbox) ---
+            # --- Cell 6: Solo (Checkbox) ---
             solo_checkbox = QCheckBox()
             solo_widget = QWidget()
             solo_layout = QHBoxLayout(solo_widget)
@@ -285,9 +379,9 @@ class QtFragmentMatchingWidget(QWidget):
             solo_layout.setContentsMargins(0, 0, 0, 0)
             solo_widget.setLayout(solo_layout)
             solo_checkbox.stateChanged.connect(lambda state, r=row_index: self._on_solo_changed(r, state))
-            self.table.setCellWidget(row_index, 4, solo_widget)
+            self.table.setCellWidget(row_index, self.COL_SOLO, solo_widget)
 
-            # --- Cell 5: Flip A<->B (Checkbox) ---
+            # --- Cell 7: Flip A<->B (Checkbox) ---
             flip_checkbox = QCheckBox()
             flip_widget = QWidget()
             flip_layout = QHBoxLayout(flip_widget)
@@ -295,62 +389,69 @@ class QtFragmentMatchingWidget(QWidget):
             flip_layout.setContentsMargins(0, 0, 0, 0)
             flip_widget.setLayout(flip_layout)
             flip_checkbox.stateChanged.connect(lambda state, r=row_index: self._on_flip_changed(r, state))
-            self.table.setCellWidget(row_index, 5, flip_widget)
+            self.table.setCellWidget(row_index, self.COL_FLIP, flip_widget)
             
-            # --- Cell 6: Apply (Button) ---
+            # --- Cell 8: Apply (Button) ---
             apply_button = QPushButton("Apply")
             apply_button.clicked.connect(lambda _, r=row_index: self._on_apply_clicked(r))
-            self.table.setCellWidget(row_index, 6, apply_button)
+            self.table.setCellWidget(row_index, self.COL_APPLY, apply_button)
+
+        # Set initial reasonable widths for interactive columns
+        self.table.resizeColumnToContents(self.COL_RANK)
+        self.table.resizeColumnToContents(self.COL_GLOB_SCORE)
+        self.table.setColumnWidth(self.COL_RECTO_SCORE, 90)
+        self.table.setColumnWidth(self.COL_VERSO_SCORE, 90)
+        self.table.setColumnWidth(self.COL_POSITIONING, 120)
+        self.table.setColumnWidth(self.COL_SOLO, 40)
+        self.table.setColumnWidth(self.COL_FLIP, 70)
+        self.table.resizeColumnToContents(self.COL_APPLY)
 
     @pyqtSlot(int, int)
     def _on_position_change(self, row, direction):
         """
         Handles clicks on the left/right positioning arrows for a given row.
-        
-        Args:
-            row (int): The table row that was clicked.
-            direction (int): +1 for next (left arrow), -1 for previous (right arrow).
+        Navigates through unique translation IDs sorted by the current side's score.
         """
-
-        # First, reset all fragments to initial positions
+        # First, reset and remove points
         self._on_reset_all(reset_interface=False)
         self._remove_matching_points()
 
-        # select this row of the table, in case not already selected
+        # Select this row of the table
         self.table.blockSignals(True)
         self.table.selectRow(row)
         self.table.blockSignals(False)
 
         # Re-enable apply button
         if direction != 0:
-            apply_button = self.table.cellWidget(row, 6)
+            apply_button = self.table.cellWidget(row, self.COL_APPLY)
             apply_button.setEnabled(True)
 
         data = self.pair_data[row]
-        current_pos_idx = self.current_position_indices[row]
+        current_pos_idx = self.current_position_indices.get(row, 0)
+        
+        # Get the positioning data based on the current side selected in the dropdown
+        agg_data = data['agg_data'][self.current_side]
+        sorted_agg_t_ids = agg_data['t_ids']
+        sorted_agg_scores = agg_data['scores']
         
         # Calculate and clamp new index
-        max_idx = len(data['sorted_agg_scores']) - 1
+        max_idx = len(sorted_agg_scores) - 1
         new_pos_idx = max(0, min(current_pos_idx + direction, max_idx))
-
-        # if new_pos_idx == current_pos_idx and (direction == -1 and new_pos_idx == 0 or direction == 1 and new_pos_idx == max_idx):
-        #      print(f"Row {row}: Reached end of scores.")
-        #      return # No change
 
         self.current_position_indices[row] = new_pos_idx
         
         # --- Update UI ---
-        new_score = data['sorted_agg_scores'][new_pos_idx]
-        container = self.table.cellWidget(row, 3)
+        new_score = sorted_agg_scores[new_pos_idx]
+        container = self.table.cellWidget(row, self.COL_POSITIONING)
         score_label = container.layout().itemAt(1).widget()
         score_label.setText(f"{new_score:.3f}")
 
         # --- Execute Core Logic ---
         
-        # Find the original translation_id using the reverse map
-        translation_id = data['sorted_agg_t_ids'][new_pos_idx]
+        # 1. Get the unique translation ID associated with this aggregated score
+        translation_id = sorted_agg_t_ids[new_pos_idx]
         
-        # Find all original data for that translation_id
+        # 2. Find all original data for that translation_id
         mask = (data['translation_ids_recto'] == translation_id)
         
         fine_scores = data['scores_recto'][mask]
@@ -358,7 +459,8 @@ class QtFragmentMatchingWidget(QWidget):
         fine_b_coords = data['b_coords_recto'][mask]
         precise_relative_position = data['t_relatives_recto'][mask][0]
 
-        if self.current_flip_checked[row]:
+        # 3. Apply fragment movement and draw points
+        if self.current_flip_checked.get(row, False):
             pair = data['pair'][::-1]
             rel_pos = -precise_relative_position
             fine_coords = fine_b_coords
@@ -366,30 +468,29 @@ class QtFragmentMatchingWidget(QWidget):
             pair = data['pair']
             rel_pos = precise_relative_position
             fine_coords = fine_a_coords
+            
         self._preview_fragment_movement(row, pair, rel_pos)
         self._draw_matching_points(pair, fine_scores, fine_coords)
 
     def _draw_matching_points(self, pair, fine_scores, fine_a_coords):
         """
-        Draws points on the qgraphicview based on coordinates and scores.
-        
-        Args:
-            qgraphicview (QGraphicsView): The view containing the scene to draw on.
-            fine_scores (array-like): Shape [N], scores determining color.
-            fine_a_coords (array-like): Shape [N, 2], (x, y) coordinates.
-            
-        Returns:
-            list: A list of QGraphicsItem objects that were added to the scene.
+        Draws points on the scene based on coordinates and scores.
         """
         scene = self.viewerplus.scene
         self.matching_points = []
         
-        # Point radius
         radius = 30
         diameter = radius * 2
 
-        # Iterate through scores and coords simultaneously
-        for score, (y, x) in zip(fine_scores, fine_a_coords):
+        frag_a_name, _ = pair
+        frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
+        
+        if not frag_a: return
+
+        # Get frag_a's current scene position to convert local coordinates to scene coordinates
+        y_frag_scene, x_frag_scene = frag_a.getBoundingBox()[:2]
+
+        for score, (y_local, x_local) in zip(fine_scores, fine_a_coords):
             
             # Determine color based on score thresholds
             if score > 0.7:
@@ -399,30 +500,16 @@ class QtFragmentMatchingWidget(QWidget):
             else:
                 color = Qt.black
 
-            # Compute scene coordinates
-            frag_a_name, _ = pair
-            frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
-            y_frag, x_frag = frag_a.getBoundingBox()[:2]
+            # Convert local fragment coordinates to scene coordinates
+            x_scene = x_local + x_frag_scene
+            y_scene = y_local + y_frag_scene
 
-            x = x + x_frag
-            y = y + y_frag
-
-            # Create the point (Ellipse)
-            # x and y are usually center points, so we offset by radius to center the circle
-            point_item = QGraphicsEllipseItem(x - radius, y - radius, diameter, diameter)
+            point_item = QGraphicsEllipseItem(x_scene - radius, y_scene - radius, diameter, diameter)
             
-            # Set the fill color (Brush)
             point_item.setBrush(QBrush(color))
-            
-            # Set the border (Pen). 
-            # Using NoPen makes them look like solid dots. 
-            # If you want a border, use QPen(Qt.black, 1)
             point_item.setPen(QPen(Qt.NoPen))
-
-            # Set Z-value to ensure points are drawn on top of other elements
             point_item.setZValue(100)
             
-            # Add to scene and tracking list
             scene.addItem(point_item)
             self.matching_points.append(point_item)
 
@@ -431,69 +518,65 @@ class QtFragmentMatchingWidget(QWidget):
 
     def _remove_matching_points(self):
         """
-        Removes the specific points provided in items_list from the view's scene.
+        Removes all tracking points from the scene.
         """
         scene = self.viewerplus.scene
         if scene is None or not self.matching_points:
             return
 
         for item in self.matching_points:
-            # Check if the item is actually in the scene before trying to remove
             if item.scene() == scene:
                 scene.removeItem(item)
         
-        # Clear the python list reference
         self.matching_points = []
         
     @pyqtSlot()
     def _on_row_selected(self):
-        """Placeholder: Called when a table row is selected."""
+        """Handles table row selection by calling position change with direction=0 (refresh)."""
         selected_rows = self.table.selectionModel().selectedRows()
         if selected_rows:
             selected_row_index = selected_rows[0].row()
-            # get direction 
-            self._on_position_change(selected_row_index, 0)  # 0 means no change, just to trigger any needed updates
+            # 0 means no change, just to trigger positioning and visualization updates
+            self._on_position_change(selected_row_index, 0) 
 
     @pyqtSlot(int)
     def _on_apply_clicked(self, row):
-        """Placeholder: Called when the 'Apply' button for a row is clicked."""
+        """Overwrites the initial fragment positions to the current alignment."""
         
-        # overwrite the initial positions to the current one for the frag a and b pair
         data = self.pair_data[row]
-        pair = data['pair']
-        frag_a_name, frag_b_name = pair
+        frag_a_name, frag_b_name = data['pair']
         frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
         frag_b = next((f for f in self.project.fragments if Path(f.filename).stem == frag_b_name), None)
+        
         if not frag_a or not frag_b:
             print(f"Fragments {frag_a_name} or {frag_b_name} not found in project.")
             return
-        # Store current positions as new initial positions
+
+        # Use current scene positions as the new 'initial' positions
         self.initial_fragment_positions[frag_a_name] = frag_a.getBoundingBox()[:2]
         self.initial_fragment_positions[frag_b_name] = frag_b.getBoundingBox()[:2]
 
         # disable apply button
-        apply_button = self.table.cellWidget(row, 5)
-        self.table.blockSignals(True)   # disable table signals to avoid triggering position change again
-        apply_button.setEnabled(False)  
+        apply_button = self.table.cellWidget(row, self.COL_APPLY)
+        self.table.blockSignals(True)
+        apply_button.setEnabled(False)
         self.table.clearSelection()
         self.table.blockSignals(False)
 
     def _update_frag_visibility(self, row):
+        """Manages visibility based on the 'Solo' checkbox state."""
         pair = self.pair_data[row]['pair']
-        is_checked = self.current_solo_checked[row]
+        is_checked = self.current_solo_checked.get(row, False)
+        
         if is_checked:
-            # Hide all fragments except the ones in the pair
             for frag in self.project.fragments:
                 frag_name = Path(frag.filename).stem
-                if frag_name not in pair:
-                    frag.setVisible(False)
-                    frag.setVisible(False, back=True)
-                else:
-                    frag.setVisible(True)
-                    frag.setVisible(True, back=True)
+                is_in_pair = frag_name in pair
+                
+                frag.setVisible(is_in_pair)
+                frag.setVisible(is_in_pair, back=True)
                 frag.enableIds(self.viewerplus.ids_enabled)
         else:
-            # Show all fragments
             for frag in self.project.fragments:
                 frag.setVisible(True)
                 frag.setVisible(True, back=True)
@@ -501,43 +584,43 @@ class QtFragmentMatchingWidget(QWidget):
 
     @pyqtSlot(int, int)
     def _on_solo_changed(self, row, state):
-        """Placeholder: Called when the 'Solo' checkbox is changed."""
+        """Handles 'Solo' checkbox change."""
         is_checked = state == Qt.Checked
         self.current_solo_checked[row] = is_checked
 
-        # select this row of the table
         self.table.blockSignals(True)
         self.table.selectRow(row)
-        self.table.blockSignals(False)
 
-        # deselect all the others
+        # Deselect all other solo checkboxes
         for r in range(len(self.current_solo_checked)):
-            if r != row:
+            if r != row and self.current_solo_checked.get(r, False):
                 self.current_solo_checked[r] = False
-                solo_widget = self.table.cellWidget(r, 4)
-                solo_checkbox = solo_widget.layout().itemAt(0).widget()
-                solo_checkbox.blockSignals(True)
-                solo_checkbox.setChecked(False)
-                solo_checkbox.blockSignals(False)
-
+                solo_widget = self.table.cellWidget(r, self.COL_SOLO)
+                if solo_widget:
+                    solo_checkbox = solo_widget.layout().itemAt(0).widget()
+                    solo_checkbox.blockSignals(True)
+                    solo_checkbox.setChecked(False)
+                    solo_checkbox.blockSignals(False)
+        
+        self.table.blockSignals(False)
         self._update_frag_visibility(row)
 
     @pyqtSlot(int, int)
     def _on_flip_changed(self, row, state):
-        """Placeholder: Called when the 'Flip A<->B' checkbox is changed."""
+        """Handles 'Flip A<->B' checkbox change."""
         is_checked = state == Qt.Checked
         self.current_flip_checked[row] = is_checked
 
-        # select this row of the table
         self.table.blockSignals(True)
         self.table.selectRow(row)
         self.table.blockSignals(False)
 
-        self._on_position_change(row, 0)  # Refresh position to apply solo logic if needed
+        # Refresh position to apply flip logic
+        self._on_position_change(row, 0)
 
     @pyqtSlot()
     def _on_reset_all(self, reset_interface=True):
-        """Resets all fragments to their initial positions."""
+        """Resets all fragments to their initial positions and optionally resets the interface state."""
         for frag in self.project.fragments:
             frag_name = Path(frag.filename).stem
             if frag_name in self.initial_fragment_positions:
@@ -548,22 +631,26 @@ class QtFragmentMatchingWidget(QWidget):
         self.viewerplus.fragmentPositionChanged()
 
         if reset_interface:
-            # also reset all solo and flip checkboxes
-            for row in range(len(self.current_solo_checked)):
+            # Also reset all solo and flip checkboxes
+            for row in range(len(self.pair_data)):
                 self.current_solo_checked[row] = False
-                solo_widget = self.table.cellWidget(row, 4)
-                solo_checkbox = solo_widget.layout().itemAt(0).widget()
-                solo_checkbox.blockSignals(True)
-                solo_checkbox.setChecked(False)
-                solo_checkbox.blockSignals(False)
+                solo_widget = self.table.cellWidget(row, self.COL_SOLO)
+                if solo_widget:
+                    solo_checkbox = solo_widget.layout().itemAt(0).widget()
+                    solo_checkbox.blockSignals(True)
+                    solo_checkbox.setChecked(False)
+                    solo_checkbox.blockSignals(False)
 
                 self.current_flip_checked[row] = False
-                flip_widget = self.table.cellWidget(row, 5)
-                flip_checkbox = flip_widget.layout().itemAt(0).widget()
-                flip_checkbox.blockSignals(True)
-                flip_checkbox.setChecked(False)
-                flip_checkbox.blockSignals(False)
-
+                flip_widget = self.table.cellWidget(row, self.COL_FLIP)
+                if flip_widget:
+                    flip_checkbox = flip_widget.layout().itemAt(0).widget()
+                    flip_checkbox.blockSignals(True)
+                    flip_checkbox.setChecked(False)
+                    flip_checkbox.blockSignals(False)
+            
+            self._remove_matching_points()
+            
     @pyqtSlot()
     def _on_ok_clicked(self):
         """Placeholder: Called when 'Ok' button is clicked."""
@@ -572,10 +659,6 @@ class QtFragmentMatchingWidget(QWidget):
     def _preview_fragment_movement(self, row, pair, position_coords):
         """
         Previews the movement of fragments based on the selected position.
-        
-        Args:
-            pair (tuple): Tuple of fragment names (frag_a, frag_b).
-            position_coords (array-like): The (y, x) coordinates for positioning.
         """
         frag_a_name, frag_b_name = pair
         frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
@@ -585,31 +668,33 @@ class QtFragmentMatchingWidget(QWidget):
             print(f"Fragments {frag_a_name} or {frag_b_name} not found in project.")
             return
 
-        # Apply new displacement based on position_coords
+        # Apply new displacement based on position_coords (dy, dx)
         dy, dx = position_coords
 
-        y, x = frag_a.getBoundingBox()[:2]
-        print(f"Frag A positioning (yx): ({y}, {x})")
-        final_y, final_x = [y+dy, x+dx]
-        frag_b.setPosition(final_x, final_y)
+        # Frag B moves relative to Frag A's current position
+        y_a, x_a = frag_a.getBoundingBox()[:2]
+        
+        final_y_b = y_a + dy
+        final_x_b = x_a + dx
+        
+        frag_b.setPosition(final_x_b, final_y_b)
         self.viewerplus.drawFragment(frag_b)
         self.viewerplus.fragmentPositionChanged()
+        
+        # Center view on Frag A's center
         self.viewerplus.centerOn(frag_a.center[0], frag_a.center[1])
 
         self._update_frag_visibility(row)
 
     def closeEvent(self, event):
         """Handles the widget close event."""
-        # re-enable visibility on all fragments
         for frag in self.project.fragments:
             frag.setVisible(True)
             frag.setVisible(True, back=True)
             frag.enableIds(self.viewerplus.ids_enabled)
         if event.spontaneous():
-            # if click on close icon, reset all positions before closing
             self._on_reset_all()
         self._remove_matching_points()
         if self.on_close_callback:
             self.on_close_callback()
         event.accept()
-        
