@@ -218,7 +218,7 @@ class QtFragmentMatchingWidget(QWidget):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         hdf5_files = glob.glob(str(merged_path / "*.hdf5"))
         self.settings.setValue("matching-fragments-path", str(resolved_path))
-        self.current_folder_label.setText(str(resolved_path))
+        self.current_folder_label.setText("Current folder: {}".format(str(resolved_path)))
 
         # Clear existing data
         self.table.setRowCount(0)
