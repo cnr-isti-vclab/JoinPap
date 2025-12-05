@@ -4,14 +4,17 @@ import glob
 import numpy as np
 import pandas as pd
 import h5py
+import re
 from pathlib import Path
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QTableWidget, QTableWidgetItem, QHeaderView, QFileDialog, QComboBox,
     QLabel, QAbstractItemView, QCheckBox, QGraphicsEllipseItem, QGraphicsView
 )
 from PyQt5.QtCore import Qt, pyqtSlot, QSettings
 from PyQt5.QtGui import QBrush, QPen
+
+from .Fragment import Fragment
 
 class QtFragmentMatchingWidget(QWidget):
     """
@@ -34,7 +37,7 @@ class QtFragmentMatchingWidget(QWidget):
         super().__init__(parent)
         self.viewerplus = viewerplus
         self.viewerplus_back = viewerplus_back
-        self.project = viewerplus.project
+        project = viewerplus.project
         self.on_close_callback = on_close_callback
         
         # --- Data Storage ---
@@ -48,8 +51,9 @@ class QtFragmentMatchingWidget(QWidget):
         self.settings = QSettings("VCLAB-AIMH", "PapyrLab")
 
         # --- Memorize initial fragment positions ---
+        self.fragments = [frag for frag in project.fragments if isinstance(frag, Fragment)]
         self.initial_fragment_positions = {}
-        for frag in self.project.fragments:
+        for frag in self.fragments:
             self.initial_fragment_positions[Path(frag.filename).stem] = frag.getBoundingBox()[:2]
 
         # --- Initialize UI ---
@@ -73,6 +77,12 @@ class QtFragmentMatchingWidget(QWidget):
         self.load_button.setFixedWidth(120)
         self.load_button.clicked.connect(self._load_results_dialog)
 
+        # --- Search Box for Filtering ---
+        self.search_box = QLineEdit()
+        self.search_box.setFixedWidth(450)
+        self.search_box.setPlaceholderText("Filter fragments, e.g., \"600 3; D 91 B\" (';' = OR, ',' = AND)")
+        self.search_box.textChanged.connect(self._apply_filter_and_update)
+
         self.show_matching_points = QCheckBox("Show Matching Points")
         self.show_matching_points.setChecked(True)
         self.show_matching_points.stateChanged[int].connect(self._change_matching_points_visibility)
@@ -85,6 +95,7 @@ class QtFragmentMatchingWidget(QWidget):
         
         top_bar_layout = QHBoxLayout()
         top_bar_layout.addWidget(self.load_button)
+        top_bar_layout.addWidget(self.search_box)
         top_bar_layout.addWidget(self.show_matching_points)
         top_bar_layout.addStretch(1)
         top_bar_layout.addWidget(side_dropdown_label)
@@ -134,6 +145,108 @@ class QtFragmentMatchingWidget(QWidget):
         self.ok_button.clicked.connect(self._on_ok_clicked)
 
     @pyqtSlot()
+    def _apply_filter_and_update(self):
+        """
+        Filters table rows based on search box text using Regular Expressions.
+        Supports OR (;) and AND (,) logic.
+        """
+        search_text = self.search_box.text().strip()
+        
+        # 1. Determine separator and parse search terms
+        filter_terms = []
+        is_and_logic = False
+        
+        if not search_text:
+            filter_terms = []
+        elif ',' in search_text:
+            # AND logic
+            filter_terms = [term.strip() for term in search_text.split(',') if term.strip()]
+            is_and_logic = True
+        elif ';' in search_text:
+            # OR logic
+            filter_terms = [term.strip() for term in search_text.split(';') if term.strip()]
+            is_and_logic = False 
+        else:
+            # Single term
+            filter_terms = [search_text.strip()]
+            is_and_logic = False 
+        
+        # 2. Apply filter to table rows (hide/show)
+        for row in range(self.table.rowCount()):
+            pair_data = self.pair_data[row]
+            frag_a, frag_b = pair_data['pair']
+            
+            is_visible_by_filter = True
+            
+            if filter_terms:
+                try:
+                    if is_and_logic:
+                        # AND logic: ALL terms must match AT LEAST ONE of the fragments in the pair
+                        # We check frag_a and frag_b individually to support regex anchors like $ or ^
+                        match = all(
+                            (re.search(term, frag_a, re.IGNORECASE) or re.search(term, frag_b, re.IGNORECASE)) 
+                            for term in filter_terms
+                        )
+                        is_visible_by_filter = match
+                    else:
+                        # OR logic: ANY term must match AT LEAST ONE of the fragments in the pair
+                        match = any(
+                            (re.search(term, frag_a, re.IGNORECASE) or re.search(term, frag_b, re.IGNORECASE)) 
+                            for term in filter_terms
+                        )
+                        is_visible_by_filter = match
+                except re.error:
+                    # Handle invalid regex (e.g., user is still typing "[...")
+                    # In this case, we choose to hide rows or assume no match until valid.
+                    is_visible_by_filter = False
+            
+            # Hide/Show row
+            self.table.setRowHidden(row, not is_visible_by_filter)
+        
+        # 3. Update Project Fragment Visibility (must be done after table rows are hidden)
+        self._update_fragment_visibility_based_on_table_rows()
+
+    def _update_fragment_visibility_based_on_table_rows(self):
+        """
+        Determines which project fragments should be visible in the viewer based on the 
+        currently visible table rows AND the state of the 'Solo' checkbox.
+        """
+        fragments_in_filtered_view = set()
+        solo_active = False
+        solo_pair = None
+        
+        # Find all fragments that are part of a visible row, and check for solo state
+        for row in range(self.table.rowCount()):
+            if not self.table.isRowHidden(row):
+                
+                # Check for active solo on a visible row
+                if self.current_solo_checked.get(row, False):
+                    solo_active = True
+                    solo_pair = self.pair_data[row]['pair']
+                    break
+                    
+                # If no solo is active, collect all fragments from visible rows
+                frag_a, frag_b = self.pair_data[row]['pair']
+                fragments_in_filtered_view.add(frag_a)
+                fragments_in_filtered_view.add(frag_b)
+
+        if solo_active:
+            # If SOLO is active, only the two fragments in that pair are visible
+            fragments_to_show = set(solo_pair)
+        else:
+            # If SOLO is NOT active, all fragments in the filtered view are shown
+            fragments_to_show = fragments_in_filtered_view
+
+        # Apply visibility
+        for frag in self.fragments:
+            frag_name = Path(frag.filename).stem
+            is_visible = frag_name in fragments_to_show
+            
+            frag.setVisible(is_visible)
+            frag.setVisible(is_visible, back=True)
+            frag.enableIds(self.viewerplus.ids_enabled and is_visible)
+
+    @pyqtSlot()
     def _load_results_dialog(self):
         """Wrapper to open file dialog and load results."""
         folder_path = QFileDialog.getExistingDirectory(self, "Select Results Folder")
@@ -164,6 +277,8 @@ class QtFragmentMatchingWidget(QWidget):
         Handler for side dropdown. Re-sorts the pair_data 
         and updates the table display and positioning logic.
         """
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
         self.current_side = value
         print(f"Side selected for sorting and positioning: {value}")
         
@@ -180,12 +295,17 @@ class QtFragmentMatchingWidget(QWidget):
         
         # 3. Re-populate the table based on the new order
         self._populate_table()
+
+        # 4. Apply filter again to ensure hidden rows remain hidden after resort
+        self._apply_filter_and_update()
         
-        # 4. Reset positioning index for the selected row to 0 (best score in new order)
+        # 5. Reset positioning index for the selected row to 0 (best score in new order)
         selected_rows = self.table.selectionModel().selectedRows()
         if selected_rows:
             row_index = selected_rows[0].row()
             self._on_position_change(row_index, 0) # Refresh the selected row to show the top score
+
+        QApplication.restoreOverrideCursor()
 
     @pyqtSlot()
     def _load_results(self, folder_path=None):
@@ -224,7 +344,7 @@ class QtFragmentMatchingWidget(QWidget):
         self.table.setRowCount(0)
         self.pair_data = []
 
-        loaded_fragments_names = [Path(f.filename).stem for f in self.project.fragments]
+        loaded_fragments_names = [Path(f.filename).stem for f in self.fragments]
         loaded_data = []
 
         for file_path in hdf5_files:
@@ -317,6 +437,7 @@ class QtFragmentMatchingWidget(QWidget):
         self.pair_data = sorted(loaded_data, key=lambda x: x['glob_score'], reverse=True)
         
         self._populate_table()
+        self._apply_filter_and_update()
         QApplication.restoreOverrideCursor()
 
     def _populate_table(self):
@@ -531,7 +652,7 @@ class QtFragmentMatchingWidget(QWidget):
         diameter = radius * 2
 
         frag_a_name, _ = pair
-        frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
+        frag_a = next((f for f in self.fragments if Path(f.filename).stem == frag_a_name), None)
         
         if not frag_a or fine_scores.size == 0: return
 
@@ -596,8 +717,8 @@ class QtFragmentMatchingWidget(QWidget):
         
         data = self.pair_data[row]
         frag_a_name, frag_b_name = data['pair']
-        frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
-        frag_b = next((f for f in self.project.fragments if Path(f.filename).stem == frag_b_name), None)
+        frag_a = next((f for f in self.fragments if Path(f.filename).stem == frag_a_name), None)
+        frag_b = next((f for f in self.fragments if Path(f.filename).stem == frag_b_name), None)
         
         if not frag_a or not frag_b:
             print(f"Fragments {frag_a_name} or {frag_b_name} not found in project.")
@@ -613,25 +734,6 @@ class QtFragmentMatchingWidget(QWidget):
         apply_button.setEnabled(False)
         self.table.clearSelection()
         self.table.blockSignals(False)
-
-    def _update_frag_visibility(self, row):
-        """Manages visibility based on the 'Solo' checkbox state."""
-        pair = self.pair_data[row]['pair']
-        is_checked = self.current_solo_checked.get(row, False)
-        
-        if is_checked:
-            for frag in self.project.fragments:
-                frag_name = Path(frag.filename).stem
-                is_in_pair = frag_name in pair
-                
-                frag.setVisible(is_in_pair)
-                frag.setVisible(is_in_pair, back=True)
-                frag.enableIds(self.viewerplus.ids_enabled and is_in_pair)
-        else:
-            for frag in self.project.fragments:
-                frag.setVisible(True)
-                frag.setVisible(True, back=True)
-                frag.enableIds(self.viewerplus.ids_enabled)
 
     @pyqtSlot(int, int)
     def _on_solo_changed(self, row, state):
@@ -654,7 +756,7 @@ class QtFragmentMatchingWidget(QWidget):
                     solo_checkbox.blockSignals(False)
         
         self.table.blockSignals(False)
-        self._update_frag_visibility(row)
+        self._apply_filter_and_update()
 
     @pyqtSlot(int, int)
     def _on_flip_changed(self, row, state):
@@ -672,7 +774,7 @@ class QtFragmentMatchingWidget(QWidget):
     @pyqtSlot()
     def _on_reset_all(self, reset_interface=True):
         """Resets all fragments to their initial positions and optionally resets the interface state."""
-        for frag in self.project.fragments:
+        for frag in self.fragments:
             frag_name = Path(frag.filename).stem
             if frag_name in self.initial_fragment_positions:
                 init_y, init_x = self.initial_fragment_positions[frag_name]
@@ -700,6 +802,7 @@ class QtFragmentMatchingWidget(QWidget):
                     flip_checkbox.setChecked(False)
                     flip_checkbox.blockSignals(False)
             
+            self.search_box.setText("")
             self._remove_matching_points()
             
     @pyqtSlot()
@@ -712,8 +815,8 @@ class QtFragmentMatchingWidget(QWidget):
         Previews the movement of fragments based on the selected position.
         """
         frag_a_name, frag_b_name = pair
-        frag_a = next((f for f in self.project.fragments if Path(f.filename).stem == frag_a_name), None)
-        frag_b = next((f for f in self.project.fragments if Path(f.filename).stem == frag_b_name), None)
+        frag_a = next((f for f in self.fragments if Path(f.filename).stem == frag_a_name), None)
+        frag_b = next((f for f in self.fragments if Path(f.filename).stem == frag_b_name), None)
 
         if not frag_a or not frag_b:
             print(f"Fragments {frag_a_name} or {frag_b_name} not found in project.")
@@ -734,12 +837,11 @@ class QtFragmentMatchingWidget(QWidget):
         
         # Center view on Frag A's center
         self.viewerplus.centerOn(frag_a.center[0], frag_a.center[1])
-
-        self._update_frag_visibility(row)
+        self._update_fragment_visibility_based_on_table_rows()
 
     def closeEvent(self, event):
         """Handles the widget close event."""
-        for frag in self.project.fragments:
+        for frag in self.fragments:
             frag.setVisible(True)
             frag.setVisible(True, back=True)
             frag.enableIds(self.viewerplus.ids_enabled)
