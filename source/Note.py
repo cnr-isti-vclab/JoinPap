@@ -96,7 +96,7 @@ class Note(Movable):
     def deselect(self, scene, **kwargs):
         self.note.setSelected(False)
 
-    def reapplyTransformsOnVerso(self, rotated=False):
+    def reapplyTransforms(self, rotated=False):
         if self.where == "verso":
             self.note.resetTransform()
             transf = QTransform()

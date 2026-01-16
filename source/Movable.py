@@ -3,6 +3,9 @@
 class Movable(object):
     def draw(self, scene, **kwargs):
         return NotImplementedError
+    
+    def rotate(self, angle):
+        return NotImplementedError
 
     def undraw(self, scene, **kwargs):
         return NotImplementedError
@@ -16,7 +19,7 @@ class Movable(object):
     def enableIds(self, enable):
         return NotImplementedError
 
-    def reapplyTransformsOnVerso(self, rotated=False):
+    def reapplyTransforms(self, rotated=False):
         return NotImplementedError
     
     def displace(self, dx, dy, **kwargs):

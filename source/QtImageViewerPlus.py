@@ -273,7 +273,7 @@ class QtImageViewerPlus(QGraphicsView):
 
         if self.project is not None and self.project.fragments is not None and self.back_vis:
             for fragment in self.project.fragments:
-                fragment.reapplyTransformsOnVerso(rotated=self.rotated)
+                fragment.reapplyTransforms(rotated=self.rotated)
 
         for tool in self.tools.tools.values():
             tool.handleTransform()
@@ -419,7 +419,7 @@ class QtImageViewerPlus(QGraphicsView):
             selected=fragment in self.selected_fragments, 
             border_enabled=self.border_enabled)
         fragment.enableIds(self.ids_enabled)
-        fragment.reapplyTransformsOnVerso(rotated=self.rotated)
+        fragment.reapplyTransforms(rotated=self.rotated)
 
     def undrawFragment(self, fragment):
         fragment.undraw(self.scene)

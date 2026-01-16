@@ -84,6 +84,8 @@ class Fragment(Movable):
         self.group_id = -1
         self.note = ""
         self.center = np.array((offset_x, offset_y))
+        self.angle_degrees = 0.0
+        self.MAX_ANGLE = 10.0 # maximum angle for rotation
 
         # custom user data - not used for now
         self.data = {}
@@ -346,7 +348,8 @@ class Fragment(Movable):
         if self.id_back_item is not None:
             self.id_back_item.setVisible(enabled)
     
-    def reapplyTransformsOnVerso(self, rotated=False):
+    def reapplyTransforms(self, rotated=False):
+        self.rotate()
         if self.id_back_item is not None:
             self.id_back_item.resetTransform()
             transf = QTransform()
@@ -495,6 +498,35 @@ class Fragment(Movable):
         self.id_item.setZValue(zvalue_ids)
         self.id_item.setOpacity(0.7)
 
+    def rotate(self, angle_degrees=None):
+        if angle_degrees is not None:
+            self.angle_degrees += angle_degrees
+
+        self.angle_degrees = min(max(self.angle_degrees, -self.MAX_ANGLE), self.MAX_ANGLE)
+
+        transform = QTransform()
+
+        reference_item = self.qpixmap_item or self.qpixmap_back_item
+        rect = reference_item.boundingRect()
+        center = rect.center()
+    
+        # 2. Move origin to center, rotate, then move back
+        transform.translate(center.x(), center.y())
+        transform.rotate(self.angle_degrees)
+        transform.translate(-center.x(), -center.y())
+
+        if self.qpixmap_back_item is not None:
+            self.qpixmap_back_item.setTransform(transform)
+
+        if self.qpixmap_contour_back_item is not None:
+            self.qpixmap_contour_back_item.setTransform(transform)
+
+        if self.qpixmap_item is not None:
+            self.qpixmap_item.setTransform(transform)
+
+        if self.qpixmap_contour_item is not None:
+            self.qpixmap_contour_item.setTransform(transform)
+
     def fromDict(self, dict):
         """
         Set the blob information given it represented as a dictionary.
@@ -507,6 +539,7 @@ class Fragment(Movable):
         self.note = dict["note"]
         self.bbox = dict["bbox"]
         self.center = np.asarray(dict["center"])
+        self.angle_degrees = dict["angle_degrees"]
 
         if self.filename != "":
             self.load_images(self.filename)
@@ -529,6 +562,7 @@ class Fragment(Movable):
         dict["group id"] = self.group_id
         dict["note"] = self.note
         dict["bbox"] = self.bbox
+        dict["angle_degrees"] = self.angle_degrees
         dict["center"] = self.center.tolist()
         dict["class"] = "fragment"
 
