@@ -854,10 +854,13 @@ class PapyrLab(QMainWindow):
             self.deleteSelectedFragments()
 
         elif event.key() == Qt.Key_X:
-
-            print(self.viewerplus.viewport().xL.max() + xR - xR.min() - xL())
-            print(self.viewerplus.viewport().height())
-            pass
+            # for selected fragments, take the rotation_degrees, increment by 1 and call fragment.rotate
+            for fragment in self.viewerplus.selected_fragments:
+                fragment.rotate(0.2)
+        elif event.key() == Qt.Key_Z:
+            # for selected fragments, take the rotation_degrees, decrement by 1 and call fragment.rotate
+            for fragment in self.viewerplus.selected_fragments:
+                fragment.rotate(-0.2)
 
         elif event.key() == Qt.Key_C:
             # TOGGLE RGB/DEPTH CHANNELS
@@ -1482,7 +1485,7 @@ class PapyrLab(QMainWindow):
         id = self.project.getFreeFragmentId()
         note = Note(scene_pos.x(), scene_pos.y(), id, where=where)
         note.draw(viewer.scene, back=(where == "verso"))
-        note.reapplyTransformsOnVerso()
+        note.reapplyTransforms()
         self.project.addFragment(note)
         self.updateToolStatus()
 
