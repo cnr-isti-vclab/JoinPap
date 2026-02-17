@@ -35,7 +35,7 @@ The main goal of JoinPap is to support the experts in recomposing papyri fragmen
 ## Installation
 
 ### Windows (binary)
-A ready-to-run all-in-one version of the application can be found as a release here: [JoinPap v0.2](https://github.com/cnr-isti-vclab/JoinPap/releases/download/untagged-11dc5efa1741f140a9f1/JoinPap.exe)
+A ready-to-run all-in-one version of the application can be found as a release here: [JoinPap v0.2](https://github.com/cnr-isti-vclab/JoinPap/releases/download/v0.2/JoinPap.exe)
 
 ### Windows (from source)
 
