@@ -20,10 +20,22 @@
 # THIS FILE CONTAINS UTILITY FUNCTIONS, E.G. CONVERSION BETWEEN DATA TYPES, BASIC OPERATIONS, ETC.
 
 import io
+import sys
+import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap, qRgb, qRgba
 import numpy as np
 from PIL import Image
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 def jointBox(boxes):
     """

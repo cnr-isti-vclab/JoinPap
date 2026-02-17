@@ -53,6 +53,7 @@ from source.QtGridWidget import QtGridWidget
 from source.QtPanelInfo import QtPanelInfo
 from source.QtImageSetWidget import QtImageSetWidget
 from source.QtFragmentMatchingWidget import QtFragmentMatchingWidget
+from source.utils import resource_path
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -143,12 +144,12 @@ class PapyrLab(QMainWindow):
         self.btnRuler           = self.newButton("ruler.png",    "Ruler",             flatbuttonstyle1, self.ruler)
 
         # Split Screen operation removed from the toolbar
-        self.pxmapSeparator = QPixmap("icons/separator.png")
+        self.pxmapSeparator = QPixmap(resource_path("icons/separator.png"))
         self.labelSeparator = QLabel()
         self.labelSeparator.setPixmap(self.pxmapSeparator.scaled(QSize(35, 30)))
         self.btnCreateGrid = self.newButton("grid.png", "Create grid",  flatbuttonstyle1, self.createGrid)
         self.btnGrid = self.newButton("grid-edit.png", "Active/disactive grid operations", flatbuttonstyle1, self.toggleGrid)
-        self.pxmapSeparator2 = QPixmap("icons/separator.png")
+        self.pxmapSeparator2 = QPixmap(resource_path("icons/separator.png"))
         self.labelSeparator2 = QLabel()
         self.labelSeparator2.setPixmap(self.pxmapSeparator2.scaled(QSize(35, 30)))
 
@@ -493,7 +494,7 @@ class PapyrLab(QMainWindow):
         button.setStyleSheet(style)
         button.setMinimumWidth(ICON_SIZE)
         button.setMinimumHeight(ICON_SIZE)
-        button.setIcon(QIcon(os.path.join("icons", icon)))
+        button.setIcon(QIcon(resource_path(os.path.join("icons", icon))))
         button.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         button.setMaximumWidth(BUTTON_SIZE)
         button.setToolTip(tooltip)
@@ -1535,7 +1536,7 @@ class PapyrLab(QMainWindow):
         icon = QLabel()
 
         # BIG icon
-        pxmap = QPixmap(os.path.join("icons", "piui200px.png"))
+        pxmap = QPixmap(resource_path(os.path.join("icons", "piui200px.png")))
         pxmap = pxmap.scaledToWidth(160)
         icon.setPixmap(pxmap)
         icon.setStyleSheet("QLabel {padding: 5px; }");
@@ -1644,7 +1645,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     # set application icon
-    app.setWindowIcon(QIcon(os.path.join("icons", "piui50px.png")))
+    app.setWindowIcon(QIcon(resource_path(os.path.join("icons", "piui50px.png"))))
 
     slider_style1 = "\
     QSlider::groove::horizontal\
@@ -1675,17 +1676,17 @@ if __name__ == '__main__':
     # set the application font
     if platform.system() != "Darwin":
         QFD = QFontDatabase()
-        font_id1 = QFD.addApplicationFont("fonts/opensans/OpenSans-Regular.ttf")
+        font_id1 = QFD.addApplicationFont(resource_path("fonts/opensans/OpenSans-Regular.ttf"))
         if font_id1 == -1:
             print("Failed to load application font..")
             sys.exit(-2)
 
-        font_id2 = QFD.addApplicationFont("fonts/roboto/Roboto-Light.ttf")
+        font_id2 = QFD.addApplicationFont(resource_path("fonts/roboto/Roboto-Light.ttf"))
         if font_id2 == -1:
             print("Failed to load application font..")
             sys.exit(-2)
 
-        font_id3 = QFD.addApplicationFont("fonts/roboto/Roboto-Regular.ttf")
+        font_id3 = QFD.addApplicationFont(resource_path("fonts/roboto/Roboto-Regular.ttf"))
         if font_id3 == -1:
             print("Failed to load application font..")
             sys.exit(-2)

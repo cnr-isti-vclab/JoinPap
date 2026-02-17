@@ -1,0 +1,12 @@
+wheel
+pyqt5
+numpy==1.24.4
+scikit-image==0.18
+scikit-learn
+pandas
+opencv-python
+matplotlib
+albumentations
+shapely
+rectangle-packer
+h5py

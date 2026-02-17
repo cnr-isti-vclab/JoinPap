@@ -2,7 +2,7 @@ from .Tool import Tool
 from PyQt5.QtWidgets import QGraphicsLineItem
 from PyQt5.QtGui import QPen, QBrush, QImage, QPixmap, QTextCharFormat, QColor, QTextCursor, QTransform
 from PyQt5.QtCore import Qt
-from ..utils import pixelsToCentimeters
+from ..utils import pixelsToCentimeters, resource_path
 from PyQt5.QtGui import QPixmap, QIcon
 
 class Ruler(Tool):
@@ -57,7 +57,7 @@ class Ruler(Tool):
             self.handleTransform()
 
             # Create the two spherical endpoints
-            cross = QPixmap("icons/cross.png")
+            cross = QPixmap(resource_path("icons/cross.png"))
             self.endpoints = [self.viewerplus.scene.addPixmap(cross) for _ in range(2)]
             for endpoint in self.endpoints:
                 endpoint.setOffset(-cross.width() / 2, -cross.height() / 2)
