@@ -8,7 +8,7 @@ The main goal of JoinPap is to support the experts in recomposing papyri fragmen
 > **Note:** JoinPap is currently under development.
 
 ---
-![ScreenShot](screenshot.jpg)
+![ScreenShot](figures/screenshot.jpg)
 ---
 
 ## Table of Contents
@@ -140,6 +140,11 @@ python PapyrLab.py
 ---
 
 ## AI-based Fragment Matching
+| | |
+|---|---|
+| ![ScreenShot](figures/d91_example_1_A.png) | ![ScreenShot](figures/wam_example_1_A.png) |
+
+*Note: this is still an experimental tool*
 *Note: this is still an experimental tool*
 
 JoinPap comes with early-version tools for finding matching fragments and proposing most-likely positionings between pairs of fragments.
