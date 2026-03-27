@@ -528,6 +528,22 @@
       text-align: center;
     }
 
+    .video-container {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+      height: 0;
+      overflow: hidden;
+    }
+
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
     .focusable:focus-visible {
       outline: 3px solid var(--ring);
       outline-offset: 3px;
@@ -604,6 +620,7 @@
         <a class="focusable" href="#ai-details">AI Details</a>
         <a class="focusable" href="#funding">Funding</a>
         <a class="focusable" href="#docs">Documentation</a>
+        <a class="focusable" href="https://www.mostreipv.unifi.it/vp-5-il-software-joinpap.html">Virtual Tour</a>
       </nav>
     </div>
   </header>
@@ -643,6 +660,9 @@
         </div>
         <figure class="hero-media">
           <img src="imgs/screenshot.jpg" alt="JoinPap software screenshot" loading="lazy" />
+          <div class="video-container">
+          <iframe width="560" height="315" src="https://www.youtube.com/embed/e4zeiSI0cjU?si=1A_73sFWoR1esrSM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
         </figure>
       </div>
     </section>
