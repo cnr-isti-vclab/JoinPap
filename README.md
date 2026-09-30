@@ -1,7 +1,9 @@
 # JoinPap
 
-JoinPap is a software tool developed within the PRIN PNRR 2022 project [Reconstructing Fragmentary Papyri through Human-Machine Interaction](https://www.joinpap.unifi.it/),
+JoinPap is a software tool developed within the PRIN PNRR 2022 project *Reconstructing Fragmentary Papyri through Human-Machine Interaction*,
 a joint effort between the Istituto Papirologico "Girolamo Vitelli" in Florence, and the Istituto di Scienza e Tecnologie dell'Informazione "A. Faedo" of the National Research Council (ISTI-CNR), Pisa.
+The official web page of the project, with the related workshops and additional information can be found [here](https://www.joinpap.unifi.it/). 
+The tool and its features are described in its official [web page](https://joinpap.isti.cnr.it).
 
 The main goal of JoinPap is to support the experts in recomposing papyri fragments. The tool provides suggestions to the experts during the reconstruction process and exploits both the front and back visual information of the fragments to achieve robust results. The tool can be used also to document the papyri reconstruction work.
 
